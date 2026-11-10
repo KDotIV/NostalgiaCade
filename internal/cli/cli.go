@@ -148,7 +148,7 @@ func Run(ctx context.Context, args []string, in io.Reader, out io.Writer) error 
 	setup.Flags().BoolVar(&onlyIfNeeded, "if-needed", false, "Skip the guide when storage is already configured")
 	root.AddCommand(setup)
 	root.AddCommand(&cobra.Command{Use: "paths", Short: "Show configured storage", RunE: func(*cobra.Command, []string) error { return call("setup.status", nil) }})
-	emulator := &cobra.Command{Use: "emulator", Short: "Install reviewed emulator packages or register Dolphin"}
+	emulator := &cobra.Command{Use: "emulator", Short: "Install, onboard and configure emulator profiles"}
 	var catalogFile, packageSlug, archivePath string
 	readCatalog := func() (emucatalog.Catalog, error) {
 		if catalogFile == "" {
@@ -188,12 +188,13 @@ func Run(ctx context.Context, args []string, in io.Reader, out io.Writer) error 
 	install.Flags().StringVar(&archivePath, "archive", "", "Optional local official archive; still checked against catalog size and SHA-256")
 	emulator.AddCommand(install)
 	var profile library.Emulator
-	profile.Adapter = "dolphin"
 	add := &cobra.Command{Use: "add", RunE: func(*cobra.Command, []string) error { return call("emulators.register", profile) }}
 	add.Flags().StringVar(&profile.ID, "id", "dolphin", "Local profile ID")
-	add.Flags().StringVar(&profile.Executable, "exe", "", "Absolute path to Dolphin.exe")
+	add.Flags().StringVar(&profile.Adapter, "adapter", "dolphin", "dolphin, duckstation, pcsx2, rpcs3 or eden")
+	add.Flags().StringVar(&profile.Executable, "exe", "", "Absolute path to the emulator executable")
 	add.Flags().StringVar(&profile.Version, "version", "", "Reviewed version label")
 	emulator.AddCommand(add)
+	addEmulatorOnboarding(emulator, ctx, runtime, out, prompt, call, submit)
 	root.AddCommand(emulator)
 	var localPath, title, genre, emulatorID, key string
 	var reference bool
@@ -212,7 +213,7 @@ func Run(ctx context.Context, args []string, in io.Reader, out io.Writer) error 
 			return err
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("import a single regular Dolphin game file")
+			return fmt.Errorf("select a supported game file; for PS3 select EBOOT.BIN within the complete game folder and use --reference")
 		}
 		fmt.Fprintln(out, "Computing SHA-256 of the import…")
 		h := sha256.New()
@@ -315,7 +316,7 @@ func Run(ctx context.Context, args []string, in io.Reader, out io.Writer) error 
 	root.AddCommand(operations)
 	root.AddCommand(&cobra.Command{Use: "games", Short: "List installed local and active-suite games", RunE: func(*cobra.Command, []string) error { return call("library.games", nil) }})
 	var gameID string
-	launch := &cobra.Command{Use: "launch", Short: "Launch one game through the pinned Dolphin adapter", RunE: func(*cobra.Command, []string) error { return call("session.launch", map[string]string{"id": gameID}) }}
+	launch := &cobra.Command{Use: "launch", Short: "Launch one game through its pinned emulator adapter", RunE: func(*cobra.Command, []string) error { return call("session.launch", map[string]string{"id": gameID}) }}
 	launch.Flags().StringVar(&gameID, "game", "", "Installed game ID")
 	root.AddCommand(launch)
 	var force bool

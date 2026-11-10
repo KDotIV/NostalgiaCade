@@ -7,7 +7,7 @@
         Title="NostalgiaCade" Width="1180" Height="780" MinWidth="920" MinHeight="640"
         WindowStartupLocation="CenterScreen">
   <Grid ColumnDefinitions="220,*">
-    <Border Background="#171B25" Padding="24,32">
+    <Border Background="#171B25" Padding="24,32" IsEnabled="{Binding !ShowSwitchConfirmation}">
       <Grid RowDefinitions="Auto,Auto,*,Auto">
         <StackPanel Spacing="8">
           <TextBlock Text="N / C" FontSize="30" FontWeight="Bold" Foreground="#DDF68D" />
@@ -25,7 +25,7 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Column="1" Margin="36,32" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="24">
+    <Grid Grid.Column="1" Margin="36,32" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="24" IsEnabled="{Binding !ShowSwitchConfirmation}">
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel Spacing="8">
           <TextBlock Text="WELCOME BACK" Foreground="#DDF68D" FontSize="11" LetterSpacing="2" />
@@ -37,6 +37,18 @@
       </Grid>
 
       <StackPanel Grid.Row="1" Spacing="12">
+      <Border IsVisible="{Binding IsPlaying}" Classes="panel" Padding="16">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{Binding ReturnControlHint}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="Your game may continue in the background. Choose another game below, or return to the game." Classes="muted" TextWrapping="Wrap" />
+          <WrapPanel Orientation="Horizontal">
+            <Button Content="Back to game" Command="{Binding ResumeGameCommand}" Margin="0,0,12,0" />
+            <Button Content="Exit game" Command="{Binding StopGameCommand}" />
+            <Button Content="Cancel next launch" IsVisible="{Binding IsStopping}" Command="{Binding CancelChangeGameCommand}" Margin="12,0,0,0" />
+          </WrapPanel>
+          <TextBlock Text="{Binding SessionDescription}" TextWrapping="Wrap" Classes="muted" />
+        </StackPanel>
+      </Border>
       <Border IsVisible="{Binding SetupRequired}" Classes="panel" Padding="16">
         <StackPanel Spacing="8">
           <TextBlock Text="Choose your storage folders to get started" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -89,7 +101,7 @@
                 </ListBox>
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
                   <Button Content="Play" Classes="primary" Command="{Binding PlayCommand}" />
-                  <Button Content="Exit game" Command="{Binding StopGameCommand}" />
+                  <Button Content="Change to this game" IsVisible="{Binding IsPlaying}" Command="{Binding ChangeGameCommand}" />
                 </StackPanel>
               </Grid>
               <Border Grid.Row="2" BorderBrush="#303847" BorderThickness="0,1,0,0" Padding="0,16,0,0">
@@ -121,5 +133,17 @@
         </StackPanel>
       </Grid>
     </Grid>
+    <Border Grid.ColumnSpan="2" IsVisible="{Binding ShowSwitchConfirmation}" Background="#C010131C">
+      <Border Classes="panel" Padding="28" MaxWidth="600" Margin="24" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel Spacing="18">
+          <TextBlock Text="Change game?" FontSize="24" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding SwitchDescription}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button x:Name="ConfirmSwitchButton" Content="End game and switch" Classes="primary" Command="{Binding ConfirmChangeGameCommand}" />
+            <Button Content="Keep playing" Command="{Binding CancelChangeGameCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
   </Grid>
 </Window>

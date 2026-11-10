@@ -43,7 +43,7 @@ The wire framing remains v1; the following additive methods require core 0.2. Pa
 | `operations.cancel` | `{ "id": "..." }` | Cancellation accepted; poll until terminal |
 | `session.launch` | `{ "id": "game-id" }` | Session ID, PID and state |
 | `session.status` | null | Current/last session state and exit code |
-| `session.stop` | `{ "force": false }` | Graceful stop requested; poll for exit |
+| `session.stop` | `{ "force": false, "expectedSessionId"?: "..." }` | Graceful stop requested; poll for exit. Optional expected ID rejects a stale request under the session lock. |
 | `session.acknowledge` | `{ "confirmed": true }` | Operator reconciliation of an ambiguous interrupted launch |
 
 `setup.configure` accepts either `root` with optional `downloadHosts`, or the existing `paths` object with six absolute folders. Root mode resolves `Emulators`, `ROMs`, `Firmware`, `Saves`, `Settings`, and `Cache` beneath the supplied root. If both forms are supplied, individual paths must match those derived from the root. Responses include the resolved paths and, in root mode, the root. Storage folders must not overlap each other or contain the application-state directory; they may share that directory as their parent. Normalization is shared with the CLI, while the core repeats validation before creating folders and persisting settings. This additive field uses the existing settings JSON and requires no database migration.
@@ -54,4 +54,17 @@ There are no shared-catalog or arbitrary-shell mutation routes. Access currently
 
 ## Emulator packages (core 0.3)
 
-`operations.submit` additionally accepts kind `emulator_install` with `install: { package: <reviewed package manifest>, archivePath?: <local archive> }`. Exactly one request body is permitted. It runs through the same durable queue, busy/session gate and retry/cancel methods. `emulators.installed` returns installed slug, version, executable, deployment review and `launchSupported`. Only Dolphin currently has a launch adapter; installing another package does not create a playable game profile. No catalog database credentials or remote publication methods are exposed over cabinet IPC. Package fields and URL/hash policy are specified by `internal/emucatalog`.
+`operations.submit` additionally accepts kind `emulator_install` with `install: { package: <reviewed package manifest>, archivePath?: <local archive> }`. Exactly one request body is permitted. It runs through the same durable queue, busy/session gate and retry/cancel methods. `emulators.installed` returns installed slug, version, executable, deployment review and `launchSupported`. All five reviewed packages register profiles; non-Dolphin profiles require preparation/prerequisites before gameplay. No catalog database credentials or remote publication methods are exposed over cabinet IPC. Package fields and URL/hash policy are specified by `internal/emucatalog`.
+
+## Emulator onboarding (core 0.4)
+
+| Method/body | Parameters | Result |
+| --- | --- | --- |
+| `emulators.profile` | `{ "id": "pcsx2" }` | Paths, prepared/ready flags, missing prerequisites and operator guidance; read-only |
+| `emulators.configure` | `{ "id": "pcsx2", "firmwarePath"?: "absolute PS3 PUP path" }` | Tracked native settings/firmware session; preparation required |
+| `operations.submit` kind `emulator_prepare` | `prepare: { "id": "pcsx2" }` | Durable operation creating an isolated profile without rewriting existing configuration |
+| `operations.submit` kind `firmware_import` | `firmware: { "id", "kind", "path" }` | Durable local copy operation; kind `bios`, `ps3-flash`, `switch-keys` or `switch-firmware` |
+
+Session results add `purpose` (`game`, `configure`, `firmware`) and `emulatorId`; non-game sessions have an empty `gameId`. Existing stop/status/recovery methods apply. Native settings sessions exclude library changes and other launches. A `ready` profile has structurally present prerequisites and expected storage routing; actual game/firmware compatibility still requires emulator validation. Eden NRO launch bypasses the console key/firmware requirement, but never profile preparation or routing checks.
+
+SQLite migration 005 widens the adapter constraint, preserves existing game foreign keys, creates profiles for installed packages, records the prepared executable hash, and adds session purpose/profile metadata. PostgreSQL schemas are unchanged. No arbitrary shell arguments or configuration scripts are accepted over IPC.

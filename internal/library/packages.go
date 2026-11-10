@@ -62,7 +62,7 @@ func (m *Manager) InstalledEmulators(ctx context.Context) ([]InstalledEmulator, 
 			return nil, err
 		}
 		v.DeploymentReview = p.DeploymentReview
-		v.LaunchSupported = v.Slug == "dolphin"
+		v.LaunchSupported = supportedAdapter(v.Slug)
 		out = append(out, v)
 	}
 	return out, rows.Err()
@@ -192,13 +192,20 @@ func (m *Manager) runEmulatorInstall(ctx context.Context, operation string, requ
 	if err != nil {
 		return err
 	}
-	if p.Slug == "dolphin" {
-		_, err = tx.ExecContext(ctx, `INSERT INTO emulator_profiles(id,adapter,executable_path,executable_sha256,version_label) VALUES('dolphin','dolphin',?,?,?) ON CONFLICT(id) DO UPDATE SET executable_path=excluded.executable_path,executable_sha256=excluded.executable_sha256,version_label=excluded.version_label`, executable, executableHash, p.Version)
+	if supportedAdapter(p.Slug) {
+		var conflicts int
+		if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM emulator_profiles WHERE id=? AND adapter<>?", p.Slug, p.Slug).Scan(&conflicts); err != nil {
+			return err
+		}
+		if conflicts != 0 {
+			return fail("adapter_conflict", "package ID is occupied by another adapter")
+		}
+		_, err = tx.ExecContext(ctx, `INSERT INTO emulator_profiles(id,adapter,executable_path,executable_sha256,version_label) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET executable_path=excluded.executable_path,executable_sha256=excluded.executable_sha256,version_label=excluded.version_label`, p.Slug, p.Slug, executable, executableHash, p.Version)
 		if err != nil {
 			return err
 		}
 	}
-	result, _ := json.Marshal(InstalledEmulator{p.Slug, p.Version, executable, p.Slug == "dolphin", p.DeploymentReview})
+	result, _ := json.Marshal(InstalledEmulator{p.Slug, p.Version, executable, supportedAdapter(p.Slug), p.DeploymentReview})
 	if _, err = tx.ExecContext(ctx, `UPDATE operations SET result_json=? WHERE id=?`, string(result), operation); err != nil {
 		return err
 	}

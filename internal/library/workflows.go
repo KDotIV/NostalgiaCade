@@ -12,19 +12,24 @@ import (
 	"strings"
 )
 
-func (m *Manager) validateEntry(ctx context.Context, s Setup, e Entry) error {
+func (m *Manager) validateEntry(ctx context.Context, s Setup, e Entry, reference ...bool) error {
 	if !identifier.MatchString(e.ID) || strings.TrimSpace(e.Title) == "" || len(e.Title) > 200 || !digest.MatchString(e.SHA256) || e.Bytes <= 0 || e.Bytes > 128*1024*1024*1024 {
 		return fail("invalid_entry", "entry requires an ID, title, SHA-256 and a size between 1 byte and 128 GiB")
 	}
 	if _, err := supportedExtension(e.Filename); err != nil {
 		return err
 	}
-	var n int
-	if err := m.db.QueryRowContext(ctx, "SELECT count(*) FROM emulator_profiles WHERE id=?", e.EmulatorID).Scan(&n); err != nil {
+	var adapter string
+	err := m.db.QueryRowContext(ctx, "SELECT adapter FROM emulator_profiles WHERE id=?", e.EmulatorID).Scan(&adapter)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fail("emulator_missing", "install or register the entry's emulator first")
+	}
+	if err != nil {
 		return err
 	}
-	if n != 1 {
-		return fail("emulator_missing", "register the entry's Dolphin profile first")
+	ref := len(reference) > 0 && reference[0] && e.Source.Kind == "local"
+	if err = validateAdapterFormat(adapter, e.Filename, ref); err != nil {
+		return err
 	}
 	switch e.Source.Kind {
 	case "local":
@@ -200,7 +205,7 @@ func (m *Manager) runImport(ctx context.Context, id string, r ImportRequest) err
 	if err = m.validateGenre(ctx, r.GenreID); err != nil {
 		return err
 	}
-	if err = m.validateEntry(ctx, s, r.Entry); err != nil {
+	if err = m.validateEntry(ctx, s, r.Entry, r.Reference); err != nil {
 		return err
 	}
 	if r.Reference && r.Entry.Source.Kind != "local" {

@@ -75,10 +75,10 @@ func supportedExtension(filename string) (string, error) {
 	}
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
-	case ".iso", ".gcm", ".rvz", ".wbfs", ".ciso", ".gcz", ".dol", ".elf":
+	case ".iso", ".gcm", ".rvz", ".wbfs", ".ciso", ".gcz", ".dol", ".elf", ".chd", ".pbp", ".exe", ".ps-exe", ".cso", ".gz", ".bin", ".self", ".nsp", ".xci", ".nro":
 		return ext, nil
 	}
-	return "", fail("unsupported_format", "Dolphin supports raw disc/homebrew files here; archives and installed WAD titles are not supported yet")
+	return "", fail("unsupported_format", "unsupported game file; use a self-contained image or a referenced PS3 boot file")
 }
 func artifactName(e Entry) string { return e.SHA256 + strings.ToLower(filepath.Ext(e.Filename)) }
 func contentName(e Entry) string  { return "content/" + artifactName(e) }

@@ -61,7 +61,7 @@ public class CoreIntegrationTests
                 var connection = await owner.ConnectAsync(deadline.Token);
                 var status = await connection.CallAsync<CoreStatus>("system.status", cancellationToken: deadline.Token);
                 Assert.Equal(1, status.ProtocolVersion);
-                Assert.Equal("004_emulator_packages.sql", status.DatabaseVersion);
+                Assert.Equal("005_emulator_adapters.sql", status.DatabaseVersion);
                 Assert.Equal("empty", status.Readiness);
                 Assert.Equal(0, status.LocalGameCount);
                 var genres = await connection.CallAsync<Genre[]>("catalog.genres", cancellationToken: deadline.Token);

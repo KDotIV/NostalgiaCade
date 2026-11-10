@@ -1,7 +1,7 @@
 //go:build windows
 
-// A real Win32 process used only by integration tests. It accepts Dolphin's
-// command-line shape, records it, and exits when its window receives WM_CLOSE.
+// A real Win32 process used only by integration tests. It accepts the adapter
+// argument/data-root shapes, records them, and exits on WM_CLOSE.
 package main
 
 import (
@@ -24,12 +24,25 @@ func main() {
 	user := ""
 	save := ""
 	for i, a := range os.Args {
-		if a == "--user" && i+1 < len(os.Args) {
+		if (a == "--user" || a == "-datapath") && i+1 < len(os.Args) {
 			user = os.Args[i+1]
+			if a == "-datapath" {
+				user = filepath.Join(user, "PCSX2")
+			}
 		}
 		if strings.HasPrefix(a, "Dolphin.General.NANDRootPath=") {
 			save = strings.TrimPrefix(a, "Dolphin.General.NANDRootPath=")
 		}
+	}
+	if user == "" {
+		user = os.Getenv("RPCS3_CONFIG_DIR")
+	}
+	if user == "" {
+		exe, _ := os.Executable()
+		user = filepath.Dir(exe)
+	}
+	if save == "" {
+		save = filepath.Join(user, "fixture-saves")
 	}
 	if user == "" || save == "" {
 		os.Exit(2)
@@ -41,6 +54,10 @@ func main() {
 	_, hasCatalogCredential := os.LookupEnv("NCADE_POSTGRES_DSN")
 	credentialState, _ := json.Marshal(hasCatalogCredential)
 	_ = os.WriteFile(filepath.Join(user, "fixture-catalog-credential.json"), credentialState, 0600)
+	var startup windows.StartupInfo
+	_ = windows.GetStartupInfo(&startup)
+	startupState, _ := json.Marshal(map[string]any{"desktop": windows.UTF16PtrToString(startup.Desktop), "showWindow": startup.ShowWindow, "explicitWindowState": startup.Flags&windows.STARTF_USESHOWWINDOW != 0})
+	_ = os.WriteFile(filepath.Join(user, "fixture-startup.json"), startupState, 0600)
 	type windowClass struct {
 		Size, Style                        uint32
 		Proc                               uintptr

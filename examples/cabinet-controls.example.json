@@ -1,0 +1,14 @@
+{
+  "default": {
+    "keyboard": "Ctrl+Alt+Home",
+    "controllerButtons": ["Back", "Start"],
+    "holdMilliseconds": 1500
+  },
+  "genres": {
+    "racing": {
+      "keyboard": "F13",
+      "controllerButtons": ["Back", "Start"],
+      "holdMilliseconds": 2000
+    }
+  }
+}

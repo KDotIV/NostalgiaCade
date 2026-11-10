@@ -202,6 +202,17 @@ func (s *Server) libraryCall(ctx context.Context, req Request) (any, *Error, boo
 		result, err = m.RegisterEmulator(ctx, v)
 	case "emulators.installed":
 		result, err = m.InstalledEmulators(ctx)
+	case "emulators.profile":
+		if decodeParams(req.Params, &id) != nil {
+			return bad()
+		}
+		result, err = m.ProfileStatus(ctx, id.ID)
+	case "emulators.configure":
+		var v library.ConfigureEmulatorRequest
+		if decodeParams(req.Params, &v) != nil {
+			return bad()
+		}
+		result, err = m.ConfigureEmulator(ctx, v)
 	case "library.games":
 		result, err = m.Games(ctx)
 	case "library.plan":
@@ -237,12 +248,13 @@ func (s *Server) libraryCall(ctx context.Context, req Request) (any, *Error, boo
 		result = m.SessionStatus()
 	case "session.stop":
 		var v struct {
-			Force bool `json:"force"`
+			Force             bool   `json:"force"`
+			ExpectedSessionID string `json:"expectedSessionId,omitempty"`
 		}
 		if decodeParams(req.Params, &v) != nil {
 			return bad()
 		}
-		err = m.StopSession(v.Force)
+		err = m.StopSession(v.Force, v.ExpectedSessionID)
 		result = map[string]bool{"accepted": err == nil}
 	case "session.acknowledge":
 		var v struct {

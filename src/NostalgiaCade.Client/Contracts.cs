@@ -6,7 +6,8 @@ public sealed record CoreStatus(string Version, int ProtocolVersion, string Plat
     string DatabaseVersion, int LocalGameCount, string Readiness, long UptimeSeconds, bool SetupRequired = false);
 public sealed record LocalGame(string Id, string Title, string Path, string GenreId, string EmulatorId,
     string Ownership, string Scope, string Sha256, long Bytes, string ArtifactId);
-public sealed record PlaySession(string Id, string GameId, int Pid, string State, int? ExitCode);
+public sealed record PlaySession(string Id, string GameId, int Pid, string State, int? ExitCode,
+    string Purpose = "game", string EmulatorId = "");
 public sealed record CoreEndpoint(string PipeName, int ProcessId, int ProtocolVersion);
 
 public sealed class CoreRpcException(int code, string message) : Exception(message)

@@ -2,7 +2,7 @@
 
 NostalgiaCade is being designed as a managed arcade library for commercial cabinets and venues. Operators select a curated genre locally or through a central dashboard; a Go application core installs its dependencies, guides hardware setup, and launches games through supported emulators.
 
-**Status: local installation and play implemented, November 10, 2026.** The Avalonia desktop connects to the Go core over a Windows named pipe. A first-run CLI guide offers one user-selected root folder or individual storage paths; operators can import/reference games, download authorized raw files, launch/exit Dolphin, and switch genre collections with old-game removal first. PostgreSQL migrations establish the future shared catalog. No ROMs or emulator binaries are included.
+**Status: five emulator launch adapters implemented, November 10, 2026.** The Avalonia desktop connects to the Go core over a Windows named pipe. CLI guides select storage paths and onboard BIOS/firmware. Operators can import/reference games, download authorized raw files, launch/exit Dolphin, DuckStation, PCSX2, RPCS3 and Eden, and switch genre collections with old-game removal first. PostgreSQL migrations establish the future shared catalog. No ROMs, BIOS, keys or emulator binaries are included.
 
 ## Run locally
 
@@ -12,7 +12,7 @@ On Windows x64, install PowerShell 7, the .NET 10 SDK (10.0.402 or a compatible 
 ./scripts/Run.ps1
 ```
 
-Complete the storage guide, register Dolphin, and add permitted game files using the [operator guide](docs/operator-cli.md). Use Tab/arrow keys to select a genre/game and Play; F11 toggles full screen. System shows the actual core version, database schema and data directory. The development build requires the .NET runtime; a signed installer comes in the release milestone.
+Complete the storage guide, install an emulator, run `emulator onboard --id <id>`, and add permitted game files using the [operator guide](docs/operator-cli.md). Use Tab/arrow keys to select a genre/game and Play; F11 toggles full screen. System shows the actual core version, database schema and data directory. The development build requires the .NET runtime; a signed installer comes in the release milestone.
 
 ```powershell
 ./scripts/Test.ps1             # Builds both languages; unit, IPC and rendered UI checks
@@ -29,10 +29,10 @@ PostgreSQL is optional for running the desktop. The database test requires a com
 - Build/run/test scripts, dependency lock files and CI workflow.
 - User-selected storage roots; copy/reference imports and approved-host HTTPS downloads with size/hash verification.
 - Durable remove-first switching, retry/cancel, persistent-data preservation and shared-file retention.
-- Dolphin launch/exit and process recovery; desktop game selection and Play/Exit controls.
+- Five launch adapters, isolated native settings sessions, BIOS/firmware onboarding and process recovery; desktop game selection and Play/Exit controls.
 - Verified ZIP/7z package installation for DuckStation, PCSX2, Dolphin, RPCS3 and Eden; admin-side PostgreSQL catalog publication/export using environment configuration.
 
-Physical Dolphin/cabinet/peripheral validation, more launch/configuration adapters, cloud API/dashboard, authentication and installer packaging remain subsequent work. The catalog admin tool uses database-role authorization; application-level Sengoku-Admin enforcement belongs to the future authenticated API. The separate LAN multiplayer server remains the final MVP feature milestone.
+Per-game/cabinet/peripheral validation, automatic hardware/per-game tuning, cloud API/dashboard, authentication and installer packaging remain subsequent work. The catalog admin tool uses database-role authorization; application-level Sengoku-Admin enforcement belongs to the future authenticated API. The separate LAN multiplayer server remains the final MVP feature milestone.
 
 ## Design documents
 

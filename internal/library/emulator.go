@@ -27,15 +27,15 @@ func (m *Manager) RegisterEmulator(ctx context.Context, e Emulator) (Emulator, e
 	if err != nil {
 		return e, err
 	}
-	if !identifier.MatchString(e.ID) || e.Adapter != "dolphin" || strings.TrimSpace(e.Version) == "" || len(e.Version) > 100 {
-		return e, fail("invalid_emulator", "specify a profile ID, dolphin adapter and version label")
+	if !identifier.MatchString(e.ID) || !supportedAdapter(e.Adapter) || strings.TrimSpace(e.Version) == "" || len(e.Version) > 100 {
+		return e, fail("invalid_emulator", "specify a profile ID, supported adapter and version label")
 	}
 	e.Executable, err = cleanPath(e.Executable)
 	if err != nil {
 		return e, err
 	}
 	if !contained(s.Paths.Emulators, e.Executable) || !strings.EqualFold(filepath.Ext(e.Executable), ".exe") {
-		return e, fail("invalid_emulator", "select the actual Dolphin .exe inside the chosen emulators folder")
+		return e, fail("invalid_emulator", "select the actual emulator .exe inside the chosen emulators folder")
 	}
 	f, err := os.Open(e.Executable)
 	if err != nil {
@@ -52,6 +52,13 @@ func (m *Manager) RegisterEmulator(ctx context.Context, e Emulator) (Emulator, e
 	hash, _, err := hashStream(ctx, f, nil, 1024*1024*1024, nil)
 	if err != nil {
 		return e, err
+	}
+	var existing string
+	if queryErr := m.db.QueryRowContext(ctx, "SELECT adapter FROM emulator_profiles WHERE id=?", e.ID).Scan(&existing); queryErr != nil && !errors.Is(queryErr, sql.ErrNoRows) {
+		return e, queryErr
+	}
+	if existing != "" && existing != e.Adapter {
+		return e, fail("adapter_conflict", "a profile's adapter cannot be changed")
 	}
 	_, err = m.db.ExecContext(ctx, `INSERT INTO emulator_profiles(id,adapter,executable_path,executable_sha256,version_label) VALUES(?,?,?,?,?)
       ON CONFLICT(id) DO UPDATE SET executable_path=excluded.executable_path,executable_sha256=excluded.executable_sha256,version_label=excluded.version_label`, e.ID, e.Adapter, e.Executable, hash, e.Version)
@@ -84,7 +91,7 @@ func (m *Manager) Launch(ctx context.Context, gameID string) (Session, error) {
 	if err := m.idle(); err != nil {
 		return Session{}, err
 	}
-	s, err := m.configured(ctx)
+	_, err := m.configured(ctx)
 	if err != nil {
 		return Session{}, err
 	}
@@ -115,40 +122,66 @@ func (m *Manager) Launch(ctx context.Context, gameID string) (Session, error) {
 	if !st.Mode().IsRegular() || st.Size() != g.Bytes {
 		return Session{}, fail("content_changed", "game file changed; reimport it")
 	}
-	var e Emulator
-	var hash string
-	if err = m.db.QueryRowContext(ctx, "SELECT id,adapter,executable_path,executable_sha256 FROM emulator_profiles WHERE id=?", g.EmulatorID).Scan(&e.ID, &e.Adapter, &e.Executable, &hash); err != nil {
-		return Session{}, err
-	}
-	if !contained(s.Paths.Emulators, e.Executable) {
-		return Session{}, fail("unsafe_path", "emulator is outside the configured root")
-	}
-	exeStat, err := os.Stat(e.Executable)
+	p, err := m.profile(ctx, g.EmulatorID)
 	if err != nil {
 		return Session{}, err
 	}
-	if err = verifyFile(ctx, e.Executable, hash, exeStat.Size()); err != nil {
-		return Session{}, fail("emulator_changed", "executable changed; register the reviewed version again")
+	if p.e.Adapter != "dolphin" {
+		status := p.status()
+		if !status.Ready && !(p.e.Adapter == "eden" && strings.EqualFold(filepath.Ext(g.Path), ".nro") && status.Prepared) {
+			return Session{}, fail("prerequisites_missing", "%s", strings.Join(status.Missing, " "))
+		}
 	}
-	for _, p := range []string{s.Paths.Settings, s.Paths.Saves} {
-		root, e2 := m.openOwned(p)
+	args, env := p.command(g.Path)
+	return m.startProfileSession(ctx, p, g.ID, "game", args, env)
+}
+
+func (m *Manager) startProfileSession(ctx context.Context, p profileLayout, gameID, purpose string, args, env []string) (Session, error) {
+	if err := p.verifySource(ctx); err != nil {
+		return Session{}, err
+	}
+	if p.e.Adapter != "dolphin" {
+		if p.prepared != p.hash {
+			return Session{}, fail("profile_not_prepared", "run emulator prepare --id %s --apply first", p.e.ID)
+		}
+		if err := p.validateRouting(); err != nil {
+			return Session{}, err
+		}
+		if err := noLinks(p.exe); err != nil {
+			return Session{}, err
+		}
+		st, err := os.Stat(p.exe)
+		if err != nil {
+			return Session{}, err
+		}
+		if err = verifyFile(ctx, p.exe, p.hash, st.Size()); err != nil {
+			return Session{}, fail("emulator_changed", "profile runtime changed; existing files preserved")
+		}
+		if p.e.Adapter == "duckstation" {
+			if st, err := os.Stat(filepath.Join(p.runtime, "portable.txt")); err != nil || !st.Mode().IsRegular() {
+				return Session{}, fail("profile_conflict", "portable marker is missing")
+			}
+		}
+	}
+	for _, base := range []string{p.paths.Settings, p.paths.Saves} {
+		root, e2 := m.openOwned(base)
 		if e2 != nil {
 			return Session{}, e2
 		}
-		e2 = root.MkdirAll(e.ID, 0700)
+		e2 = root.MkdirAll(p.e.ID, 0700)
 		root.Close()
 		if e2 != nil {
 			return Session{}, e2
 		}
-		if e2 = noLinks(filepath.Join(p, e.ID)); e2 != nil {
+		if e2 = noLinks(filepath.Join(base, p.e.ID)); e2 != nil {
 			return Session{}, e2
 		}
 	}
-	session := Session{ID: newID(), GameID: g.ID, State: "starting"}
-	if _, err = m.db.ExecContext(ctx, "INSERT INTO play_sessions(id,game_id,state) VALUES(?,?,'starting')", session.ID, g.ID); err != nil {
+	session := Session{ID: newID(), GameID: gameID, State: "starting", Purpose: purpose, EmulatorID: p.e.ID}
+	if _, err := m.db.ExecContext(ctx, "INSERT INTO play_sessions(id,game_id,state,purpose,emulator_id) VALUES(?,?,'starting',?,?)", session.ID, gameID, purpose, p.e.ID); err != nil {
 		return Session{}, err
 	}
-	proc, err := startNative(e.Executable, dolphinArgs(s.Paths, e.ID, g.Path), filepath.Dir(e.Executable))
+	proc, err := startNative(p.exe, args, filepath.Dir(p.exe), env...)
 	if err != nil {
 		_, _ = m.db.ExecContext(context.Background(), "UPDATE play_sessions SET state='exited',ended_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?", session.ID)
 		return Session{}, err
@@ -199,9 +232,12 @@ func (m *Manager) SessionStatus() Session {
 	}
 	return m.session
 }
-func (m *Manager) StopSession(force bool) error {
+func (m *Manager) StopSession(force bool, expectedID ...string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if len(expectedID) > 0 && expectedID[0] != "" && expectedID[0] != m.session.ID {
+		return fail("session_changed", "the active session changed; refresh before requesting exit")
+	}
 	if m.process == nil {
 		return fail("not_running", "no controllable game session is running")
 	}
@@ -221,17 +257,17 @@ func (m *Manager) AcknowledgeSession(ctx context.Context, confirmed bool) error 
 	return err
 }
 func (m *Manager) recoverSession(ctx context.Context) error {
-	var id, game, state string
+	var id, game, state, purpose, emulatorID string
 	var pid sql.NullInt64
 	var identity sql.NullString
-	err := m.db.QueryRowContext(ctx, "SELECT id,game_id,state,process_id,process_identity FROM play_sessions WHERE state IN ('starting','running','interrupted') ORDER BY started_at DESC LIMIT 1").Scan(&id, &game, &state, &pid, &identity)
+	err := m.db.QueryRowContext(ctx, "SELECT id,game_id,state,process_id,process_identity,purpose,emulator_id FROM play_sessions WHERE state IN ('starting','running','interrupted') ORDER BY started_at DESC LIMIT 1").Scan(&id, &game, &state, &pid, &identity, &purpose, &emulatorID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	m.session = Session{ID: id, GameID: game, PID: int(pid.Int64), State: "interrupted"}
+	m.session = Session{ID: id, GameID: game, PID: int(pid.Int64), State: "interrupted", Purpose: purpose, EmulatorID: emulatorID}
 	if !pid.Valid || !identity.Valid || state == "interrupted" {
 		m.unresolved = true
 		return nil

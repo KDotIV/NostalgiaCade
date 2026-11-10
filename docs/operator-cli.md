@@ -45,11 +45,11 @@ Place your reviewed Dolphin distribution, including its supporting files, inside
 ./artifacts/bin/ncade.exe emulator add --id dolphin --exe 'D:/Cabinet/Emulators/Dolphin/Dolphin.exe' --version 'YOUR-REVIEWED-VERSION'
 ```
 
-The core pins the executable's SHA-256. Changes require deliberate re-registration before launch. Alternatively, `ncade emulator install --id dolphin` downloads a reviewed official package and registers it automatically. Package installation also supports DuckStation, PCSX2, RPCS3 and Eden; only Dolphin has game launch support currently. See [emulator installation, catalog administration and configuration research](emulators.md). Vendor installers and firmware are not executed or distributed.
+The core pins the executable's SHA-256. Changes require deliberate re-registration before launch. Alternatively, `ncade emulator install --id dolphin` downloads a reviewed official package and registers it automatically. DuckStation, PCSX2, RPCS3 and Eden also have launch/configuration adapters. Run `emulator onboard --id <id>` for isolated profile and BIOS/firmware setup. `emulator configure --id <id>` opens native settings for controls/graphics; `stop` closes that tracked session. See [emulator onboarding and configuration](emulators.md) for local firmware imports and the RPCS3 PUP installer. Use `emulator add --adapter <adapter>` when registering an external distribution inside the selected emulator root; DuckStation/Eden portable isolation requires an installed reviewed package.
 
 The adapter uses batch/exec/user switches and temporary command-line configuration, without rewriting controller settings. GameCube memory cards/GCI saves and Wii NAND/SD data use the chosen saves root. Dolphin's user directory uses `settings/<profile-id>`; native state saves and caches that Dolphin keeps there also remain persistent. Both roots survive switches. Existing external Dolphin profiles/saves are not automatically moved or merged. Configure Dolphin input against the same user directory.
 
-HLE and skipped GameCube boot-ROM startup mean this raw-file flow needs no external BIOS. The firmware folder is preserved for later adapters. Installed WAD titles and their NAND cleanup are not supported; Wii NAND/system data stays with the protected saves.
+HLE and skipped GameCube boot-ROM startup mean this Dolphin raw-file flow needs no external BIOS. Installed WAD titles and their NAND cleanup are not supported; Wii NAND/system data stays with the protected saves.
 
 References: [Dolphin command-line options](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/UICommon/CommandLineParse.cpp), [user directory](https://dolphin-emu.org/docs/guides/controlling-global-user-directory/), [save-path configuration](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/Config/MainSettings.cpp).
 
@@ -63,7 +63,17 @@ References: [Dolphin command-line options](https://github.com/dolphin-emu/dolphi
 
 Imports copy and verify a single regular file; `--reference` leaves it in place. Both create **persistent local entries** independent of the active genre. Local copies and referenced originals survive switches. No import uploads to PostgreSQL or creates a canonical shared-catalog record.
 
-Supported raw files: `.iso`, `.gcm`, `.rvz`, `.wbfs`, `.ciso`, `.gcz`, `.dol`, `.elf`. Archives, playlists, split files and installed WADs need additional adapter work. Extract approved archives outside the managed library before importing.
+Choose the profile with `--emulator <id>` (default `dolphin`). Formats are checked against that profile:
+
+| Adapter | Accepted files |
+| --- | --- |
+| Dolphin | `.iso`, `.gcm`, `.rvz`, `.wbfs`, `.ciso`, `.gcz`, `.dol`, `.elf` |
+| DuckStation | `.chd`, `.pbp`, `.exe`, `.ps-exe` |
+| PCSX2 | `.iso`, `.chd`, `.cso`, `.gz`, `.elf` |
+| RPCS3 | `EBOOT.BIN`, `.elf`, `.self`; local `--reference` imports only |
+| Eden | `.nsp`, `.xci`, `.nro` |
+
+Example: `ncade import --emulator rpcs3 --path 'E:/My PS3 game/PS3_GAME/USRDIR/EBOOT.BIN' --genre action-adventure --reference`. Keep that entire game directory intact: the imported boot file is only its launch entry point. RPCS3 folder games are persistent local references, outside managed genre collections. Single-file imports and authorized downloads work for the other adapters. PS1 CUE/BIN sets should first be converted to a self-contained CHD outside the managed library. Generic archives, playlists, split files, installed WAD/PKG titles, update/DLC inventory and automatic game patching need additional adapter work.
 
 For a download, edit [the entry example](../examples/download-entry.example.json) with real size/hash/source/permission evidence, set `authorized` after review, and approve its source/redirect hosts in setup:
 
@@ -103,6 +113,19 @@ Closing the CLI does not cancel core work. Restart marks interrupted operations 
 
 After CLI changes, Refresh the desktop, select a genre/game, and Play. The app checks session state every two seconds and requests focus when the game exits. F11 toggles full screen.
 
+While a game runs, use `Ctrl+Alt+Home` or hold an XInput controller's Back + Start for 1.5 seconds to return to NCade. Choose another installed game, then **Change to this game** → **End game and switch**. Native exit prompts must still be confirmed; NCade waits up to 60 seconds and never forces exit. The next game starts only after the current session exits with code 0. **Back to game** minimizes NCade; **Cancel next launch** cancels the replacement, not a delivered close request. Returning to the library does not promise to pause the emulator.
+
+Copy `examples/cabinet-controls.example.json` to your data directory as `cabinet-controls.json` to configure keyboard-encoder/controller return combinations per genre, then restart the desktop. The running game's genre selects the override. Xbox-compatible controller menu controls are D-pad, A and B. Wheel/DirectInput/raw HID mappings still require hardware-specific integration. Full details are in [frontend UX](frontend-ux.md#implemented-prototype-return-and-game-change-flow).
+
+For RPCS3's isolated profile, block accidental fullscreen changes with:
+
+```powershell
+./scripts/Set-Rpcs3CabinetControls.ps1 -DataDirectory C:/.ncade -WhatIf
+./scripts/Set-Rpcs3CabinetControls.ps1 -DataDirectory C:/.ncade
+```
+
+Close emulators first. The helper backs up `GuiConfigs/CurrentSettings.ini`, then enables ignore-keyboard-hotkeys and ignore-mouse-double-clicks; it preserves render resolution, bindings, saves and unrelated INI content. Restore the reported backup with RPCS3 closed to undo this change. It does not block Windows shortcuts.
+
 ```powershell
 ./artifacts/bin/ncade.exe launch --game GAME_ID
 ./artifacts/bin/ncade.exe session
@@ -113,10 +136,10 @@ After CLI changes, Refresh the desktop, select a genre/game, and Play. The app c
 
 Graceful exit sends `WM_CLOSE` only to windows owned by the tracked process. Forced exit uses its held process handle, never an executable-name search. Recovery checks Windows creation time as well as PID. Games survive a core crash, and the next core reconnects while keeping mutations blocked. An ambiguous interrupted launch requires the operator to verify the emulator is closed, then run `ncade session acknowledge --confirm-closed`.
 
-Closing the desktop does not terminate games or operations. Core shutdown is rejected while either is active. Register the actual Dolphin executable; launchers that hand gameplay to another process are outside this adapter.
+Closing the desktop does not terminate games, configuration sessions or operations. Core shutdown is rejected while any is active. Register the actual emulator executable; launchers that hand work to another process are outside these adapters. Native settings/firmware dialogs may require operator completion before graceful shutdown can finish; force is never automatic.
 
 ## Verification limits
 
-`./scripts/Test.ps1` covers schema upgrade, path/source policy, remove-first ordering, retention, cancellation, integrity failure, retry/recovery, both CLI storage layouts and rendered game selection. A synthetic Win32 executable accepts Dolphin-shaped arguments and tests import, graceful exit and core-crash reconnection with a persistent save in both layouts, including application state inside the common root. It is not a claim of real Dolphin compatibility or performance.
+`./scripts/Test.ps1` covers schema upgrades retaining existing profile/game foreign keys, path/source policy, remove-first ordering, retention, cancellation, integrity failure, retry/recovery, both CLI storage layouts and rendered game selection. Synthetic Win32 integration tests exercise all five adapter launch/configure argument shapes, credential stripping, exclusive sessions and graceful exit. Dolphin tests also cover core-crash recovery. Firmware tests cover idempotency, conflict preflight and persistent settings/save preservation. These fixtures do not establish real game compatibility or performance.
 
-Physical Dolphin/content/peripheral testing, gamepad focus behavior, signed remote manifests/authentication, more launch adapters, game-archive extraction, range resume, path relocation and installer packaging remain subsequent work. The multiplayer server remains the final feature milestone. Five emulator package records and their download URLs have been published to Azure through the separate admin tool.
+Per-game/peripheral testing, automatic hardware tuning and patch profiles, gamepad focus behavior, signed remote manifests/authentication, game-archive extraction, range resume, path relocation and installer packaging remain subsequent work. The multiplayer server remains the final feature milestone. Five emulator package records and their download URLs have been published to Azure through the separate admin tool.

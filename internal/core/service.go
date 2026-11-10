@@ -9,7 +9,7 @@ import (
 )
 
 const ProtocolVersion = 1
-const Version = "0.3.0-dev"
+const Version = "0.4.0-dev"
 
 type Genre struct {
 	ID            string `json:"id"`

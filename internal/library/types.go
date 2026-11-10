@@ -59,11 +59,13 @@ type SwitchRequest struct {
 	ExpectedRevision int64    `json:"expectedRevision"`
 }
 type Request struct {
-	Key     string           `json:"key"`
-	Kind    string           `json:"kind"`
-	Import  *ImportRequest   `json:"import,omitempty"`
-	Switch  *SwitchRequest   `json:"switch,omitempty"`
-	Install *EmulatorInstall `json:"install,omitempty"`
+	Key      string           `json:"key"`
+	Kind     string           `json:"kind"`
+	Import   *ImportRequest   `json:"import,omitempty"`
+	Switch   *SwitchRequest   `json:"switch,omitempty"`
+	Install  *EmulatorInstall `json:"install,omitempty"`
+	Prepare  *ProfileRequest  `json:"prepare,omitempty"`
+	Firmware *FirmwareRequest `json:"firmware,omitempty"`
 }
 type Game struct {
 	ID         string `json:"id"`
@@ -93,11 +95,13 @@ type Plan struct {
 	RetainArtifacts []string `json:"retainArtifacts"`
 }
 type Session struct {
-	ID       string `json:"id"`
-	GameID   string `json:"gameId"`
-	PID      int    `json:"pid"`
-	State    string `json:"state"`
-	ExitCode *int   `json:"exitCode,omitempty"`
+	Purpose    string `json:"purpose,omitempty"`
+	EmulatorID string `json:"emulatorId,omitempty"`
+	ID         string `json:"id"`
+	GameID     string `json:"gameId"`
+	PID        int    `json:"pid"`
+	State      string `json:"state"`
+	ExitCode   *int   `json:"exitCode,omitempty"`
 }
 type Fault struct {
 	Code    string

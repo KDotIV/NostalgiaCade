@@ -63,7 +63,7 @@ WPF is a reasonable cabinet alternative if Windows-only support and existing WPF
 
 Distribute one signed setup `.exe` that installs the C# interface, Go core, uninstall metadata and prerequisites. A single installer does not require a single executable at runtime. Start with a self-contained cabinet application for predictable installations; compare a runtime-downloading bootstrapper during packaging to quantify size savings. Do not promise an installer size before measuring a release build. Self-contained .NET publishing includes the runtime, which affects size: [Microsoft deployment guidance](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview).
 
-Pin tested emulator versions per suite release. Application updates and emulator updates are independent, signed/verified operations scheduled outside gameplay. Apply coordinated UI/core updates with protocol compatibility checks and retain a previous application release for recovery. An application's update rollback does not imply rollback of removed game content or flashed firmware.
+Pin tested emulator versions per suite release. Application updates and emulator updates are independent, signed/verified operations scheduled outside gameplay. Apply coordinated UI/core updates with protocol compatibility checks aaand retain a previous application release for recovery. An application's update rollback does not imply rollback of removed game content or flashed firmware.
 
 ## Operational defaults proposed for the MVP
 

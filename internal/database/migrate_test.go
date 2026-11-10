@@ -33,7 +33,7 @@ func TestFoundationUpgradePreservesExistingLocalRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := Migrate(ctx, db, "sqlite")
-	if err != nil || len(result.Applied) != 2 {
+	if err != nil || len(result.Applied) != 3 {
 		t.Fatalf("upgrade: %+v %v", result, err)
 	}
 	var title, path, scope string
@@ -52,6 +52,45 @@ func localDB(t *testing.T) *sql.DB {
 	return db
 }
 
+func TestAdapterUpgradePreservesProfilesGamesAndForeignKeys(t *testing.T) {
+	db := localDB(t)
+	ctx := context.Background()
+	previous := fstest.MapFS{}
+	for _, name := range []string{"001_local_state.sql", "002_genres.sql", "003_library_workflows.sql", "004_emulator_packages.sql"} {
+		path := "migrations/sqlite/" + name
+		body, err := fs.ReadFile(migrations, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		previous[path] = &fstest.MapFile{Data: body}
+	}
+	if _, err := migrateFS(ctx, db, "sqlite", previous); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO emulator_profiles VALUES('custom-dolphin','dolphin','C:/Dolphin.exe','hash','old');
+	INSERT INTO local_games(id,title,content_path,emulator_id,genre_id,sha256,size_bytes) VALUES('kept','Keep me','C:/game.dol','custom-dolphin','racing','hash',123);
+	INSERT INTO emulator_packages(slug,version,package_sha256,executable_path,executable_sha256,manifest_json) VALUES('pcsx2','v2','archive','C:/PCSX2.exe','exe','{}');`); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := Migrate(ctx, db, "sqlite"); err != nil || len(result.Applied) != 1 {
+		t.Fatalf("%+v %v", result, err)
+	}
+	var emulator, path, hash string
+	var size int
+	if err := db.QueryRow("SELECT emulator_id,content_path,sha256,size_bytes FROM local_games WHERE id='kept'").Scan(&emulator, &path, &hash, &size); err != nil || emulator != "custom-dolphin" || path != "C:/game.dol" || hash != "hash" || size != 123 {
+		t.Fatalf("row changed: %s %s %s %d %v", emulator, path, hash, size, err)
+	}
+	if err := db.QueryRow("SELECT adapter FROM emulator_profiles WHERE id='pcsx2'").Scan(&emulator); err != nil || emulator != "pcsx2" {
+		t.Fatal(emulator, err)
+	}
+	if _, err := db.Exec("DELETE FROM emulator_profiles WHERE id='custom-dolphin'"); err == nil {
+		t.Fatal("foreign key to rebuilt table lost")
+	}
+	if _, err := db.Exec("INSERT INTO emulator_profiles(id,adapter,executable_path,executable_sha256,version_label) VALUES('bad','arbitrary-shell','x','x','x')"); err == nil {
+		t.Fatal("invalid adapter accepted")
+	}
+}
+
 func TestSQLiteMigrationsAndConstraints(t *testing.T) {
 	db := localDB(t)
 	ctx := context.Background()
@@ -59,7 +98,7 @@ func TestSQLiteMigrationsAndConstraints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(first.Applied) != 4 {
+	if len(first.Applied) != 5 {
 		t.Fatalf("applied %v", first.Applied)
 	}
 	second, err := Migrate(ctx, db, "sqlite")

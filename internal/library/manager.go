@@ -95,6 +95,55 @@ func (m *Manager) cleanupPartials(ctx context.Context, s Setup) error {
 			return err
 		}
 	}
+	for _, base := range []string{s.Paths.Firmware, s.Paths.Settings} {
+		r, e := m.openOwned(base)
+		if e != nil {
+			return e
+		}
+		for _, id := range ids {
+			if e = r.Remove(".firmware-" + id + ".partial"); e != nil && !os.IsNotExist(e) {
+				r.Close()
+				return e
+			}
+		}
+		r.Close()
+	}
+	rows, err = m.db.QueryContext(ctx, "SELECT id,request_json FROM operations WHERE kind='emulator_prepare' AND state IN ('failed','canceled','completed')")
+	if err != nil {
+		return err
+	}
+	type stage struct{ id, profile string }
+	var stages []stage
+	for rows.Next() {
+		var id, body string
+		if err = rows.Scan(&id, &body); err != nil {
+			rows.Close()
+			return err
+		}
+		var request Request
+		if json.Unmarshal([]byte(body), &request) == nil && request.Prepare != nil && identifier.MatchString(request.Prepare.ID) && len(id) == 32 && identifier.MatchString(id) {
+			stages = append(stages, stage{id, request.Prepare.ID})
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	settings, err := m.openOwned(s.Paths.Settings)
+	if err != nil {
+		return err
+	}
+	defer settings.Close()
+	for _, v := range stages {
+		rel := filepath.Join(v.profile, ".prepare-"+v.id)
+		if err = noLinks(filepath.Join(s.Paths.Settings, rel)); err != nil {
+			return err
+		}
+		if err = settings.RemoveAll(rel); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 func (m *Manager) Close() {
@@ -158,11 +207,16 @@ func (m *Manager) Submit(ctx context.Context, r Request) (Operation, error) {
 	if r.Key == "" || len(r.Key) > 128 {
 		return Operation{}, fail("invalid_request", "a nonempty idempotency key of at most 128 characters is required")
 	}
-	valid := (r.Kind == "import" && r.Import != nil && r.Switch == nil && r.Install == nil) ||
-		(r.Kind == "switch" && r.Switch != nil && r.Import == nil && r.Install == nil) ||
-		(r.Kind == "emulator_install" && r.Install != nil && r.Import == nil && r.Switch == nil)
-	if !valid {
-		return Operation{}, fail("invalid_request", "expected one import, switch or emulator_install request body")
+	count := 0
+	for _, present := range []bool{r.Import != nil, r.Switch != nil, r.Install != nil, r.Prepare != nil, r.Firmware != nil} {
+		if present {
+			count++
+		}
+	}
+	valid := (r.Kind == "import" && r.Import != nil) || (r.Kind == "switch" && r.Switch != nil) ||
+		(r.Kind == "emulator_install" && r.Install != nil) || (r.Kind == "emulator_prepare" && r.Prepare != nil) || (r.Kind == "firmware_import" && r.Firmware != nil)
+	if !valid || count != 1 {
+		return Operation{}, fail("invalid_request", "expected exactly one body matching the operation kind")
 	}
 	body, err := json.Marshal(r)
 	if err != nil {
@@ -243,6 +297,10 @@ func (m *Manager) start(id string, r Request) {
 		var err error
 		if r.Kind == "emulator_install" {
 			err = m.runEmulatorInstall(ctx, id, *r.Install)
+		} else if r.Kind == "emulator_prepare" {
+			err = m.runProfilePrepare(ctx, id, *r.Prepare)
+		} else if r.Kind == "firmware_import" {
+			err = m.runFirmwareImport(ctx, id, *r.Firmware)
 		} else if r.Kind == "switch" {
 			err = m.runSwitch(ctx, id, *r.Switch)
 		} else {
@@ -258,6 +316,9 @@ func (m *Manager) start(id string, r Request) {
 				message = "Canceled. Removed old content is not restored; retry to continue."
 				if r.Kind == "emulator_install" {
 					message = "Package installation canceled; retry to continue. Existing releases are preserved."
+				}
+				if r.Kind == "emulator_prepare" || r.Kind == "firmware_import" {
+					message = "Onboarding canceled; existing files preserved. Retry to finish incomplete copies."
 				}
 			}
 		}

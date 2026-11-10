@@ -13,9 +13,14 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly bool _allowAutomaticSetup;
     private bool _setupAttempted;
     private LocalGame[] _allGames = [];
+    private PlaySession? _currentSession;
+    private LocalGame? _pendingGame;
+    private string? _pendingSessionId;
+    private DateTimeOffset? _stopRequestedAt;
     public ObservableCollection<Genre> Genres { get; } = [];
     public ObservableCollection<LocalGame> Games { get; } = [];
     public event EventHandler? GameEnded;
+    public event EventHandler? ResumeRequested;
 
     [ObservableProperty] private string _connectionStatus = "Connecting to your cabinet…";
     [ObservableProperty] private string _error = "";
@@ -32,6 +37,12 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] private string _databaseVersion = "—";
     [ObservableProperty] private string _platform = "—";
     [ObservableProperty] private int _localGameCount;
+    [ObservableProperty] private string _returnControlHint = "Ctrl+Alt+Home · Return to NCade";
+    [ObservableProperty] private string? _runningGenreId;
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(PlayCommand)), NotifyCanExecuteChangedFor(nameof(ChangeGameCommand)), NotifyCanExecuteChangedFor(nameof(StopGameCommand))] private bool _isStopping;
+    [ObservableProperty] private bool _showSwitchConfirmation;
+    [ObservableProperty] private string _switchDescription = "";
+    public int RunningProcessId => _currentSession?.State == "running" && _currentSession.Purpose == "game" ? _currentSession.Pid : 0;
 
     public MainViewModel() : this(new CoreSession(
         Environment.GetEnvironmentVariable("NCADE_DATA_DIR") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NostalgiaCade"),
@@ -113,8 +124,53 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
         catch (Exception e) when (IsUserFacingFailure(e)) { ShowError(e); }
     }
-    private bool CanPlay() => IsConnected && !SetupRequired && !IsPlaying && SelectedGame?.EmulatorId is { Length: > 0 };
-    private bool CanStop() => IsPlaying;
+    partial void OnIsPlayingChanged(bool value) => ChangeGameCommand.NotifyCanExecuteChanged();
+    partial void OnSelectedGameChanged(LocalGame? value) => ChangeGameCommand.NotifyCanExecuteChanged();
+    private bool CanPlay() => IsConnected && !SetupRequired && !IsPlaying && !IsStopping && SelectedGame?.EmulatorId is { Length: > 0 };
+    private bool CanStop() => IsPlaying && !IsStopping;
+    private bool CanChangeGame() => IsConnected && IsPlaying && !IsStopping && _currentSession?.Purpose == "game" && SelectedGame?.EmulatorId is { Length: > 0 } && SelectedGame.Id != _currentSession.GameId;
+    [RelayCommand(CanExecute = nameof(CanChangeGame))]
+    private void ChangeGame()
+    {
+        _pendingGame = SelectedGame;
+        _pendingSessionId = _currentSession!.Id;
+        SwitchDescription = $"End the current game and play {_pendingGame!.Title}? Save in the game first; unsaved progress may be lost.";
+        ShowSwitchConfirmation = true;
+    }
+    [RelayCommand]
+    private void CancelChangeGame()
+    {
+        _pendingGame = null; _pendingSessionId = null; ShowSwitchConfirmation = false;
+        // A submitted close request cannot be undone. Cancel only the next launch.
+        if (IsStopping) SessionDescription = "Next launch canceled. The current exit request is still pending.";
+    }
+    [RelayCommand]
+    private async Task ConfirmChangeGameAsync()
+    {
+        if (!ShowSwitchConfirmation || _pendingGame is null || _pendingSessionId is null) return;
+        ShowSwitchConfirmation = false;
+        await RequestStopAsync(_pendingSessionId);
+    }
+    [RelayCommand]
+    private void ResumeGame() => ResumeRequested?.Invoke(this, EventArgs.Empty);
+
+    private async Task RequestStopAsync(string expectedId)
+    {
+        IsStopping = true;
+        _stopRequestedAt = DateTimeOffset.UtcNow;
+        try
+        {
+            var connection = await _session.ConnectAsync(_lifetime.Token);
+            await connection.CallAsync<System.Text.Json.JsonElement>("session.stop", new { force = false, expectedSessionId = expectedId }, _lifetime.Token);
+            SessionDescription = "Waiting for the game to close. If prompted, confirm exit in the emulator using Back to game.";
+        }
+        catch (Exception e) when (IsUserFacingFailure(e)) { ClearTransition(); ShowError(e); }
+    }
+    private void ClearTransition()
+    {
+        _pendingGame = null; _pendingSessionId = null; ShowSwitchConfirmation = false;
+        IsStopping = false; _stopRequestedAt = null;
+    }
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task PlayAsync()
     {
@@ -122,20 +178,23 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             var connection = await _session.ConnectAsync(_lifetime.Token);
             var state = await connection.CallAsync<PlaySession>("session.launch", new { id = SelectedGame!.Id }, _lifetime.Token);
-            IsPlaying = state.State == "running"; SessionDescription = "Game running"; HasError = false;
+            SetSession(state); SessionDescription = "Game running"; HasError = false;
         }
         catch (Exception e) when (IsUserFacingFailure(e)) { ShowError(e); }
     }
     [RelayCommand(CanExecute = nameof(CanStop))]
     private async Task StopGameAsync()
     {
-        try
-        {
-            var connection = await _session.ConnectAsync(_lifetime.Token);
-            await connection.CallAsync<System.Text.Json.JsonElement>("session.stop", new { force = false }, _lifetime.Token);
-            SessionDescription = "Waiting for the game to close…";
-        }
-        catch (Exception e) when (IsUserFacingFailure(e)) { ShowError(e); }
+        CancelChangeGame();
+        if (_currentSession is not null) await RequestStopAsync(_currentSession.Id);
+    }
+    private void SetSession(PlaySession state)
+    {
+        _currentSession = state;
+        IsPlaying = state.State == "running";
+        RunningGenreId = IsPlaying ? _allGames.FirstOrDefault(g => g.Id == state.GameId)?.GenreId : null;
+        OnPropertyChanged(nameof(RunningProcessId));
+        ChangeGameCommand.NotifyCanExecuteChanged();
     }
     [RelayCommand]
     private async Task PollSessionAsync()
@@ -146,11 +205,36 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable
             var connection = await _session.ConnectAsync(_lifetime.Token);
             var state = await connection.CallAsync<PlaySession>("session.status", cancellationToken: _lifetime.Token);
             var wasPlaying = IsPlaying;
-            IsPlaying = state.State == "running";
-            SessionDescription = state.State switch { "running" => "Game running", "interrupted" => "Session needs operator attention", _ => "No game running" };
+            SetSession(state);
+            if (_pendingGame is not null && _pendingSessionId != state.Id)
+            {
+                ClearTransition();
+                ShowError(new IOException("The session changed. Select the next game again."));
+            }
+            if (IsStopping && state.State == "exited")
+            {
+                var next = state.ExitCode == 0 ? _pendingGame : null;
+                ClearTransition();
+                if (next is not null)
+                {
+                    var launched = await connection.CallAsync<PlaySession>("session.launch", new { id = next.Id }, _lifetime.Token);
+                    SetSession(launched); SessionDescription = $"Playing {next.Title}"; HasError = false;
+                    return;
+                }
+                if (state.ExitCode != 0) ShowError(new IOException("The emulator exited unexpectedly. Select Play when ready; no replacement was launched."));
+            }
+            else if (IsStopping && (state.State != "running" || DateTimeOffset.UtcNow - _stopRequestedAt > TimeSpan.FromSeconds(60)))
+            {
+                ClearTransition();
+                ShowError(new IOException("Game change stopped waiting. Check the emulator's exit prompt, then select a game again. No forced exit was used."));
+            }
+            if (!IsStopping) SessionDescription = state.State switch {
+                "running" when state.Purpose == "configure" => "Emulator settings open",
+                "running" when state.Purpose == "firmware" => "Firmware installer open",
+                "running" => "Game running", "interrupted" => "Session needs operator attention", _ => "No game running" };
             if (wasPlaying && !IsPlaying) GameEnded?.Invoke(this, EventArgs.Empty);
         }
-        catch (Exception e) when (IsUserFacingFailure(e)) { IsConnected = false; ShowError(e); }
+        catch (Exception e) when (IsUserFacingFailure(e)) { ClearTransition(); IsConnected = false; ShowError(e); }
     }
     private static bool IsUserFacingFailure(Exception e) => e is IOException or InvalidDataException or TimeoutException or OperationCanceledException or CoreRpcException or System.Text.Json.JsonException or System.ComponentModel.Win32Exception;
     private void ShowError(Exception e) { HasError = true; Error = e is OperationCanceledException ? "The action was interrupted. Refresh to reconnect." : e.Message; }
@@ -159,7 +243,8 @@ public partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         await _lifetime.CancelAsync();
         if (RefreshCommand.ExecutionTask is { } pending) await pending;
-        foreach (var command in new[] { PlayCommand, StopGameCommand, PollSessionCommand, ConfigureStorageCommand })
+        ClearTransition();
+        foreach (var command in new[] { PlayCommand, StopGameCommand, PollSessionCommand, ConfigureStorageCommand, ConfirmChangeGameCommand })
             if (command.ExecutionTask is { } work) await work;
         await _session.DisposeAsync();
         _lifetime.Dispose();

@@ -79,6 +79,55 @@ public class DesktopTests
             window.KeyPress(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
             window.KeyRelease(Key.F11, RawInputModifiers.None, PhysicalKey.F11, null);
             Assert.Equal(WindowState.FullScreen, window.WindowState);
+
+            // Exercise a real process transition, including cancellation and a
+            // stale operator request. The second launch must wait for exit.
+            operation = await connection.CallAsync<JsonElement>("operations.submit", new { key="ui-import-second", kind="import", import=new {genreId="fighting", reference=false, entry=new {id="second", title="Second local sample", emulatorId="dolphin", filename="homebrew.dol", sha256=Convert.ToHexStringLower(SHA256.HashData(bytes)), bytes=bytes.Length, source=new {kind="local",path=source}}}});
+            using var transitionDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            while (operation.GetProperty("state").GetString() is "pending" or "running")
+            {
+                await Task.Delay(50, transitionDeadline.Token);
+                operation = await connection.CallAsync<JsonElement>("operations.get", new {id=operation.GetProperty("id").GetString()}, transitionDeadline.Token);
+            }
+            Assert.Equal("completed", operation.GetProperty("state").GetString());
+            await viewModel.RefreshCommand.ExecuteAsync(null);
+            viewModel.OpenLibraryCommand.Execute(null);
+            var firstGame = viewModel.Games.First(g => g.Title == "Local homebrew sample");
+            var nextGame = viewModel.Games.First(g => g.Title == "Second local sample");
+            viewModel.SelectedGame = firstGame;
+            await viewModel.PlayCommand.ExecuteAsync(null);
+            Assert.False(viewModel.HasError, viewModel.Error);
+            var running = await connection.CallAsync<PlaySession>("session.status");
+            var fixtureReady = Path.Combine(paths.settings, "dolphin", "fixture-ready");
+            while (!File.Exists(fixtureReady)) await Task.Delay(50, transitionDeadline.Token);
+            await Assert.ThrowsAsync<CoreRpcException>(() => connection.CallAsync<JsonElement>("session.stop", new {force=false,expectedSessionId="stale-session"}));
+            Assert.Equal(running.Id, (await connection.CallAsync<PlaySession>("session.status")).Id);
+            viewModel.SelectedGame = nextGame;
+            viewModel.ChangeGameCommand.Execute(null);
+            Assert.True(viewModel.ShowSwitchConfirmation);
+            viewModel.CancelChangeGameCommand.Execute(null);
+            Assert.False(viewModel.ShowSwitchConfirmation);
+            Assert.True(viewModel.IsPlaying);
+            viewModel.ChangeGameCommand.Execute(null);
+            Capture(window, "change-game.png");
+            File.Delete(fixtureReady);
+            await viewModel.ConfirmChangeGameCommand.ExecuteAsync(null);
+            viewModel.SelectedGame = firstGame; // browsing cannot change the confirmed target
+            PlaySession replacement;
+            do
+            {
+                await Task.Delay(50, transitionDeadline.Token);
+                await viewModel.PollSessionCommand.ExecuteAsync(null);
+                replacement = await connection.CallAsync<PlaySession>("session.status");
+            } while (replacement.Id == running.Id);
+            Assert.Equal(nextGame.Id, replacement.GameId);
+            Assert.Equal("running", replacement.State);
+            Assert.False(viewModel.IsStopping);
+            Assert.False(viewModel.HasError, viewModel.Error);
+            while (!File.Exists(fixtureReady)) await Task.Delay(50, transitionDeadline.Token);
+            await viewModel.StopGameCommand.ExecuteAsync(null);
+            do { await Task.Delay(50, transitionDeadline.Token); await viewModel.PollSessionCommand.ExecuteAsync(null); } while (viewModel.IsPlaying);
+            Assert.Equal("shared save survives", await File.ReadAllTextAsync(Path.Combine(paths.saves,"dolphin","Wii","fixture-save.txt")));
         }
         finally
         {
