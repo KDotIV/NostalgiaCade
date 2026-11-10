@@ -1,0 +1,101 @@
+# genre|key|title|first platform release year|platform|local players maximum (draft)
+racing|ridge-racer|Ridge Racer|1994|ps1|1
+racing|gran-turismo-5|Gran Turismo 5|2010|ps3|2
+racing|gran-turismo-6|Gran Turismo 6|2013|ps3|2
+racing|ridge-racer-type-4|R4: Ridge Racer Type 4|1998|ps1|2
+racing|gran-turismo|Gran Turismo|1997|ps1|2
+racing|gran-turismo-2|Gran Turismo 2|1999|ps1|2
+racing|crash-team-racing|Crash Team Racing|1999|ps1|4
+racing|need-for-speed-iii|Need for Speed III: Hot Pursuit|1998|ps1|2
+racing|burnout-paradise|Burnout Paradise|2008|ps3|1
+racing|wipeout-3|Wipeout 3|1999|ps1|2
+racing|gran-turismo-3|Gran Turismo 3: A-Spec|2001|ps2|2
+racing|gran-turismo-4|Gran Turismo 4|2004|ps2|2
+racing|burnout-3|Burnout 3: Takedown|2004|ps2|2
+racing|burnout-revenge|Burnout Revenge|2005|ps2|2
+racing|midnight-club-3|Midnight Club 3: DUB Edition|2005|ps2|2
+racing|outrun-2006|OutRun 2006: Coast 2 Coast|2006|ps2|1
+racing|sonic-all-stars-racing-transformed|Sonic & All-Stars Racing Transformed|2012|ps3|4
+racing|f-zero-gx|F-Zero GX|2003|gamecube|4
+racing|mario-kart-double-dash|Mario Kart: Double Dash!!|2003|gamecube|4
+racing|mario-kart-wii|Mario Kart Wii|2008|wii|4
+fighting|tekken-2|Tekken 2|1996|ps1|2
+fighting|tekken-3|Tekken 3|1998|ps1|2
+fighting|soul-blade|Soul Blade|1996|ps1|2
+fighting|street-fighter-alpha-3|Street Fighter Alpha 3|1998|ps1|2
+fighting|tekken-tag-tournament-2|Tekken Tag Tournament 2|2012|ps3|4
+fighting|mortal-kombat-2011|Mortal Kombat|2011|ps3|4
+fighting|ultimate-marvel-vs-capcom-3|Ultimate Marvel vs. Capcom 3|2011|ps3|2
+fighting|tekken-tag-tournament|Tekken Tag Tournament|2000|ps2|2
+fighting|tekken-4|Tekken 4|2002|ps2|2
+fighting|tekken-5|Tekken 5|2005|ps2|2
+fighting|soulcalibur-ii|Soulcalibur II|2003|ps2|2
+fighting|soulcalibur-iii|Soulcalibur III|2005|ps2|2
+fighting|virtua-fighter-4-evolution|Virtua Fighter 4: Evolution|2003|ps2|2
+fighting|capcom-vs-snk-2|Capcom vs. SNK 2|2001|ps2|2
+fighting|marvel-vs-capcom-2|Marvel vs. Capcom 2|2002|ps2|2
+fighting|guilty-gear-xx-accent-core|Guilty Gear XX Accent Core|2007|ps2|2
+fighting|super-smash-bros-melee|Super Smash Bros. Melee|2001|gamecube|4
+fighting|tekken-6|Tekken 6|2009|ps3|2
+fighting|king-of-fighters-xii|The King of Fighters XII|2009|ps3|2
+fighting|street-fighter-iv|Street Fighter IV|2009|ps3|2
+action-adventure|tomb-raider|Tomb Raider|1996|ps1|1
+action-adventure|tomb-raider-ii|Tomb Raider II|1997|ps1|1
+action-adventure|metal-gear-solid|Metal Gear Solid|1998|ps1|1
+action-adventure|resident-evil-2|Resident Evil 2|1998|ps1|1
+action-adventure|tomb-raider-2013|Tomb Raider|2013|ps3|1
+action-adventure|the-last-of-us|The Last of Us|2013|ps3|1
+action-adventure|shadow-of-the-colossus|Shadow of the Colossus|2005|ps2|1
+action-adventure|ico|Ico|2001|ps2|1
+action-adventure|okami|Okami|2006|ps2|1
+action-adventure|prince-of-persia-sands-of-time|Prince of Persia: The Sands of Time|2003|ps2|1
+action-adventure|beyond-good-and-evil|Beyond Good & Evil|2003|ps2|1
+action-adventure|metal-gear-solid-2|Metal Gear Solid 2: Sons of Liberty|2001|ps2|1
+action-adventure|metal-gear-solid-3|Metal Gear Solid 3: Snake Eater|2004|ps2|1
+action-adventure|zelda-wind-waker|The Legend of Zelda: The Wind Waker|2002|gamecube|1
+action-adventure|zelda-twilight-princess|The Legend of Zelda: Twilight Princess|2006|gamecube|1
+action-adventure|metroid-prime|Metroid Prime|2002|gamecube|1
+action-adventure|metroid-prime-2|Metroid Prime 2: Echoes|2004|gamecube|4
+action-adventure|uncharted-2|Uncharted 2: Among Thieves|2009|ps3|1
+action-adventure|folklore|Folklore|2007|ps3|1
+action-adventure|uncharted-drakes-fortune|Uncharted: Drake's Fortune|2007|ps3|1
+platform|crash-bandicoot|Crash Bandicoot|1996|ps1|1
+platform|crash-bandicoot-2|Crash Bandicoot 2: Cortex Strikes Back|1997|ps1|1
+platform|crash-bandicoot-warped|Crash Bandicoot: Warped|1998|ps1|1
+platform|spyro-the-dragon|Spyro the Dragon|1998|ps1|1
+platform|spyro-2|Spyro 2: Ripto's Rage!|1999|ps1|1
+platform|spyro-year-of-the-dragon|Spyro: Year of the Dragon|2000|ps1|1
+platform|klonoa-door-to-phantomile|Klonoa: Door to Phantomile|1997|ps1|1
+platform|jak-and-daxter|Jak and Daxter: The Precursor Legacy|2001|ps2|1
+platform|jak-ii|Jak II|2003|ps2|1
+platform|jak-3|Jak 3|2004|ps2|1
+platform|ratchet-and-clank|Ratchet & Clank|2002|ps2|1
+platform|ratchet-going-commando|Ratchet & Clank: Going Commando|2003|ps2|1
+platform|ratchet-up-your-arsenal|Ratchet & Clank: Up Your Arsenal|2004|ps2|4
+platform|sly-cooper|Sly Cooper and the Thievius Raccoonus|2002|ps2|1
+platform|sly-2|Sly 2: Band of Thieves|2004|ps2|1
+platform|sly-3|Sly 3: Honor Among Thieves|2005|ps2|2
+platform|super-mario-sunshine|Super Mario Sunshine|2002|gamecube|1
+platform|rayman-legends|Rayman Legends|2013|ps3|4
+platform|super-mario-galaxy|Super Mario Galaxy|2007|wii|2
+platform|new-super-mario-bros-wii|New Super Mario Bros. Wii|2009|wii|4
+hack-and-slash|devil-may-cry|Devil May Cry|2001|ps2|1
+hack-and-slash|devil-may-cry-4|Devil May Cry 4|2008|ps3|1
+hack-and-slash|devil-may-cry-3-special-edition|Devil May Cry 3: Special Edition|2006|ps2|1
+hack-and-slash|god-of-war|God of War|2005|ps2|1
+hack-and-slash|god-of-war-ii|God of War II|2007|ps2|1
+hack-and-slash|onimusha-warlords|Onimusha: Warlords|2001|ps2|1
+hack-and-slash|bayonetta|Bayonetta|2009|ps3|1
+hack-and-slash|onimusha-3|Onimusha 3: Demon Siege|2004|ps2|1
+hack-and-slash|onimusha-dawn-of-dreams|Onimusha: Dawn of Dreams|2006|ps2|2
+hack-and-slash|metal-gear-rising|Metal Gear Rising: Revengeance|2013|ps3|1
+hack-and-slash|dynasty-warriors-4|Dynasty Warriors 4|2003|ps2|2
+hack-and-slash|ninja-gaiden-sigma|Ninja Gaiden Sigma|2007|ps3|1
+hack-and-slash|samurai-warriors|Samurai Warriors|2004|ps2|2
+hack-and-slash|samurai-warriors-2|Samurai Warriors 2|2006|ps2|2
+hack-and-slash|baldurs-gate-dark-alliance|Baldur's Gate: Dark Alliance|2001|ps2|2
+hack-and-slash|god-of-war-iii|God of War III|2010|ps3|1
+hack-and-slash|champions-of-norrath|Champions of Norrath|2004|ps2|4
+hack-and-slash|champions-return-to-arms|Champions: Return to Arms|2005|ps2|4
+hack-and-slash|heavenly-sword|Heavenly Sword|2007|ps3|1
+hack-and-slash|god-of-war-collection|God of War Collection|2009|ps3|1

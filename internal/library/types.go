@@ -35,6 +35,7 @@ type Source struct {
 	AuthorizationURL string `json:"authorizationUrl,omitempty"`
 }
 type Entry struct {
+	Reference  bool   `json:"reference,omitempty"`
 	ID         string `json:"id"`
 	Title      string `json:"title"`
 	EmulatorID string `json:"emulatorId"`

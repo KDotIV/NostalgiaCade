@@ -39,6 +39,8 @@ try {
     $env:NCADE_TEST_CATALOG = '1'
     go test ./internal/emucatalog -run '^TestPostgresCatalogPublication$' -count=1 -v
     if ($LASTEXITCODE) { throw 'PostgreSQL catalog publication tests failed.' }
+    go test ./internal/pilot -run '^TestPostgresPilot$' -count=1 -v
+    if ($LASTEXITCODE) { throw 'PostgreSQL pilot catalog tests failed.' }
 } finally {
     if ($started) {
         & "$PostgresBin/pg_ctl.exe" -D $dataPath -m fast -w stop

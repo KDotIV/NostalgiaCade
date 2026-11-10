@@ -50,6 +50,8 @@ The wire framing remains v1; the following additive methods require core 0.2. Pa
 
 Workflow parameters reject unknown fields. Typed domain failures use `-32010` and a stable code prefix in the message (`setup_required`, `busy`, `game_running`, `stale_plan`, etc.). Long file operations return immediately and are polled; the five-second RPC deadline does not cancel a submitted job. Operations are serialized, idempotency keys reject changed payloads, and cancellation does not restore removed ROMs. Explicit retry reconciles journaled state after restart.
 
+Suite manifest entries additionally accept `reference: true` for local sources. The core verifies the external file before removing managed content, records an external suite entry, and detaches that entry on the next switch without deleting the original. Reference entries acquire zero bytes and have no managed artifact ID. RPCS3 disc-folder suites use this form with EBOOT.BIN; the complete source folder remains required.
+
 There are no shared-catalog or arbitrary-shell mutation routes. Access currently means the trusted Windows user; venue/operator authentication remains a later milestone. The multiplayer server is not implemented or exposed here.
 
 ## Emulator packages (core 0.3)

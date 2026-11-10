@@ -14,6 +14,12 @@ import (
 
 type runtimeClient struct{ dataDir string }
 
+// CallLocal lets the operator-side pilot coordinator use the same discovery,
+// credential filtering and IPC deadlines as the cabinet CLI.
+func CallLocal(ctx context.Context, dataDir, method string, params, result any) error {
+	return (runtimeClient{dataDir: dataDir}).call(ctx, method, params, result)
+}
+
 func defaultDataDir() string {
 	if p := os.Getenv("NCADE_DATA_DIR"); p != "" {
 		return p

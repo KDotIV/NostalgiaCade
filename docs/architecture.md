@@ -15,7 +15,7 @@ The Avalonia/Go/IPC/database foundation is now implemented. [Development instruc
 - Four cabinets in the pilot. Full-screen application for the prototype; Windows kiosk lockdown is a later deployment concern.
 - Shared cabinet saves/unlocks, with an operator-controlled reset.
 - Racing, Fighting, Action Adventure, Platform, and Hack and Slash; 20 catalog entries per genre.
-- Games from 1990 through 2010, inclusive, mixing arcade and console systems. Cabinet suitability and tested compatibility take priority over a popularity ranking.
+- Games from 1990 through 2015, inclusive, mixing arcade and console systems. Cabinet suitability and tested compatibility take priority over a popularity ranking.
 - User-imported games plus downloads from authorized homebrew/freeware sources.
 - Remove the old genre's unneeded managed games before downloading the new genre. Keep emulators, firmware/software, saves, and settings.
 - A lightweight Windows installer with guided setup. Wheel, pedal, and controller models will follow later.

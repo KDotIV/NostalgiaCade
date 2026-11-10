@@ -41,7 +41,7 @@ func (m *Manager) validateEntry(ctx context.Context, s Setup, e Entry, reference
 		}
 		// A retained, content-addressed target can be used without reattaching
 		// original import media. The worker verifies its full hash before removal.
-		if info, e2 := os.Lstat(filepath.Join(s.Paths.ROMs, contentName(e))); e2 == nil && info.Mode().IsRegular() && info.Size() == e.Bytes {
+		if info, e2 := os.Lstat(filepath.Join(s.Paths.ROMs, contentName(e))); !ref && e2 == nil && info.Mode().IsRegular() && info.Size() == e.Bytes {
 			return nil
 		}
 		if err := noLinks(e.Source.Path); err != nil {
@@ -115,9 +115,15 @@ func (m *Manager) plan(ctx context.Context, s Setup, manifest Manifest) (Plan, [
 			return p, nil, fail("invalid_manifest", "duplicate game ID")
 		}
 		entries[e.ID] = true
-		if err := m.validateEntry(ctx, s, e); err != nil {
+		if e.Reference && e.Source.Kind != "local" {
+			return p, nil, fail("invalid_source", "referenced suite entries must use local files")
+		}
+		if err := m.validateEntry(ctx, s, e, e.Reference); err != nil {
 			return p, nil, err
 		}
+		if e.Reference {
+			continue
+		} // External originals never belong to genre cleanup.
 		a := artifactName(e)
 		if !keep[a] {
 			info, err := os.Lstat(filepath.Join(s.Paths.ROMs, contentName(e)))
@@ -286,6 +292,12 @@ func (m *Manager) runSwitch(ctx context.Context, id string, r SwitchRequest) err
 	defer root.Close()
 	// Validate every local source and retained target before any deletion.
 	for _, e := range r.Manifest.Games {
+		if e.Reference {
+			if err = verifyFile(ctx, e.Source.Path, e.SHA256, e.Bytes); err != nil {
+				return err
+			}
+			continue
+		}
 		if _, e2 := root.Lstat(contentName(e)); e2 == nil {
 			if err = verifyFile(ctx, filepath.Join(s.Paths.ROMs, contentName(e)), e.SHA256, e.Bytes); err != nil {
 				return err
@@ -340,6 +352,9 @@ func (m *Manager) runSwitch(ctx context.Context, id string, r SwitchRequest) err
 		return err
 	}
 	for _, e := range r.Manifest.Games {
+		if e.Reference {
+			continue
+		}
 		if err = m.recordArtifact(ctx, e); err != nil {
 			return err
 		}
@@ -356,7 +371,11 @@ func (m *Manager) runSwitch(ctx context.Context, id string, r SwitchRequest) err
 	}
 	defer tx.Rollback()
 	for _, e := range r.Manifest.Games {
-		if err = insertGame(ctx, tx, "suite-"+r.Manifest.GenreID+"-"+e.ID, r.Manifest.GenreID, "suite", "managed", filepath.Join(s.Paths.ROMs, contentName(e)), artifactName(e), e); err != nil {
+		ownership, path, artifactID := "managed", filepath.Join(s.Paths.ROMs, contentName(e)), artifactName(e)
+		if e.Reference {
+			ownership, path, artifactID = "external", e.Source.Path, ""
+		}
+		if err = insertGame(ctx, tx, "suite-"+r.Manifest.GenreID+"-"+e.ID, r.Manifest.GenreID, "suite", ownership, path, artifactID, e); err != nil {
 			return err
 		}
 	}

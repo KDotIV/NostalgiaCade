@@ -1,6 +1,6 @@
 # Go backend and PostgreSQL design
 
-Status: proposed logical model, November 10, 2026. No SQL migrations have been applied and no connection to the supplied database has been made.
+Status: foundation catalog/management tables and an additive pilot installation module are implemented, November 10, 2026. Azure contains five emulator packages, 100 draft game candidates, nine local-source metadata bindings and source research. The trusted CLI connects to PostgreSQL and reports installations; the authenticated HTTP API and remaining fleet model below are still proposed. See [the implemented E2E workflow and table list](postgres-e2e.md).
 
 ## Service boundaries
 
@@ -10,7 +10,7 @@ The separate venue multiplayer coordinator and upstream game services run on the
 
 Store large game/package bytes in object storage or leave them at approved upstream URLs. PostgreSQL stores identifiers, digests, versions, sizes, source policies and storage keys. Although PostgreSQL can store binary data, putting multi-gigabyte game images in the operational database would couple content transfer and backup/restore workloads unnecessarily.
 
-Only the Go API and dedicated migration tooling connect to PostgreSQL. The supplied connection string uses .NET/Npgsql-style options; a Go driver needs its own configuration and pool options. Do not paste it unchanged into Go or a client executable.
+The trusted catalog/pilot tools connect to PostgreSQL during this prototype; the production design moves catalog/fleet access behind the Go API. The supplied connection string uses .NET/Npgsql-style options; a Go driver needs its own configuration and pool options. Do not paste it unchanged into Go or a client executable.
 
 Use separate migration and runtime database roles, parameterized SQL, bounded connection pools and verified TLS. Set total pool capacity against the server budget across every API replica, not independently assuming each replica can use the entire limit. Configure `sslmode=verify-full` and appropriate trust roots for Azure; do not disable certificate verification to fix connectivity. See [Azure PostgreSQL TLS guidance](https://learn.microsoft.com/en-us/azure/postgresql/security/security-tls-how-to-connect).
 
@@ -28,7 +28,7 @@ Separate read/fleet database access from catalog-writing access where practical,
 
 ## Proposed table families
 
-These are the intended boilerplate entities for the first migration series. Final DDL should follow confirmed scope and contract review; this document is not an executable migration.
+This table describes the broader target model, including future entities and fields. Executable foundation DDL lives under `internal/database/migrations/postgres`; the implemented pilot additions live in `internal/pilot/schema.sql`. Do not assume every proposed field below already exists.
 
 | Tables | Main fields and purpose |
 | --- | --- |

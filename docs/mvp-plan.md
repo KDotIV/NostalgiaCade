@@ -24,7 +24,7 @@ Local installation/play update: CLI storage setup, raw-file copy/reference impor
 | Saves | Shared cabinet saves/unlocks, retained on genre changes, explicit operator reset |
 | Prototype shell | Full-screen application; OS kiosk lockdown later |
 | Content | Local user imports plus authorized homebrew/freeware downloads |
-| Curation | Arcade and console games released in 1990-2010, prioritizing cabinet suitability and tested compatibility |
+| Curation | Arcade and console games released in 1990-2015, prioritizing cabinet suitability and tested compatibility |
 | Storage switching | Remove old unneeded managed content before downloading the new genre |
 | Reference hardware | i7-12800HX, RTX 3070 Ti Laptop GPU, 32 GB RAM, 1 TB SSD as upper reference |
 | Peripheral scope | Exact supported models to be supplied later |
@@ -52,7 +52,7 @@ For each candidate, record title, release year, platform/edition, primary genre,
 
 Also classify competitive/co-op modes, same-cabinet versus cross-cabinet support, native LAN/emulator netplay/backend requirements, service dependencies and network evidence. Classify every selected edition; use the [case-study template](research/multiplayer-case-study-template.md) for each multiplayer candidate. Keep unresearched or unsupported modes visible. A Sengoku-Admin reviews and publishes canonical additions and verified profiles; user-added local entries remain outside this catalog workflow.
 
-First filter for the 1990-2010 window, viable content acquisition, acceptable intended-use terms and an emulator integration appropriate for commercial deployment. Then rank cabinet interaction, measured reliability, controller fit, audience recognition and storage/setup cost. Action-adventure games with longer progression can use shared saves, but still need a practical exit/return flow.
+First filter for the 1990-2015 window, viable content acquisition, acceptable intended-use terms and an emulator integration appropriate for commercial deployment. Then rank cabinet interaction, measured reliability, controller fit, audience recognition and storage/setup cost. Action-adventure games with longer progression can use shared saves, but still need a practical exit/return flow.
 
 Use candidate -> researched -> locally validated -> venue-approved publication states. A well-known title can be documented as a candidate without bundling its ROM or asserting venue-use permission. An emulator's compatibility listing is supporting evidence, not a substitute for testing our exact version/settings and peripherals.
 
