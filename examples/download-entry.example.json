@@ -1,0 +1,14 @@
+{
+  "id": "replace-with-game-id",
+  "title": "Replace with reviewed homebrew title",
+  "emulatorId": "dolphin",
+  "filename": "homebrew.dol",
+  "sha256": "REPLACE_WITH_LOWERCASE_SHA256",
+  "bytes": 1,
+  "source": {
+    "kind": "download",
+    "url": "https://downloads.example.invalid/homebrew.dol",
+    "authorized": false,
+    "authorizationUrl": "https://author.example.invalid/license"
+  }
+}

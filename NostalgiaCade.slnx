@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NostalgiaCade.Desktop/NostalgiaCade.Desktop.csproj" />
+    <Project Path="src/NostalgiaCade.Client/NostalgiaCade.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NostalgiaCade.Tests/NostalgiaCade.Tests.csproj" />
+  </Folder>
+</Solution>

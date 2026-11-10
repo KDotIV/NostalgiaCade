@@ -1,0 +1,11 @@
+$ErrorActionPreference = 'Stop'
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$env:GOCACHE = Join-Path $repoRoot '.cache/go-build'
+$env:GOMODCACHE = Join-Path $repoRoot '.cache/go-mod'
+$env:DOTNET_CLI_HOME = Join-Path $repoRoot '.cache/dotnet'
+$env:NUGET_PACKAGES = Join-Path $repoRoot '.cache/nuget'
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+$env:DOTNET_NOLOGO = '1'
+$env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
+$env:GOTOOLCHAIN = 'auto'

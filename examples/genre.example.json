@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "racing-local-v1",
+  "genreId": "racing",
+  "games": [
+    {
+      "id": "replace-with-game-id",
+      "title": "Replace with imported title",
+      "emulatorId": "dolphin",
+      "filename": "game.rvz",
+      "sha256": "REPLACE_WITH_LOWERCASE_SHA256",
+      "bytes": 1,
+      "source": { "kind": "local", "path": "E:/Imports/game.rvz" }
+    }
+  ]
+}

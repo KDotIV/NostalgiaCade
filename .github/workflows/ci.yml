@@ -1,0 +1,61 @@
+name: Foundation checks
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.11'
+          cache: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Restore locked packages
+        shell: pwsh
+        run: |
+          . ./scripts/Environment.ps1
+          dotnet restore NostalgiaCade.slnx --locked-mode
+          if ($LASTEXITCODE) { throw 'Locked restore failed.' }
+      - name: Build, test IPC and render desktop
+        shell: pwsh
+        run: ./scripts/Test.ps1
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ncade_test
+          POSTGRES_PASSWORD: ncade_ci_only
+          POSTGRES_DB: ncade_test_ci
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U ncade_test -d ncade_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.11'
+      - name: Database migrations and Go race checks
+        env:
+          NCADE_TEST_POSTGRES_DSN: 'postgres://ncade_test:ncade_ci_only@127.0.0.1:5432/ncade_test_ci?sslmode=disable'
+        run: |
+          go test -race -count=1 ./...
+          NCADE_TEST_CATALOG=1 go test -race -count=1 ./internal/emucatalog -run '^TestPostgresCatalogPublication$'

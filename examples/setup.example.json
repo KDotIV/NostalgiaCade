@@ -1,0 +1,11 @@
+{
+  "paths": {
+    "emulators": "D:/Cabinet/Emulators",
+    "roms": "D:/Cabinet/ROMs",
+    "firmware": "D:/Cabinet/Firmware",
+    "saves": "D:/Cabinet/Saves",
+    "settings": "D:/Cabinet/Settings",
+    "cache": "D:/Cabinet/Cache"
+  },
+  "downloadHosts": []
+}

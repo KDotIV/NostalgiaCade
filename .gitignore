@@ -1,0 +1,14 @@
+/.cache/
+/artifacts/
+**/bin/
+**/obj/
+/.vs/
+/.idea/
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.user

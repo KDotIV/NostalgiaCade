@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "packages": [
+    {
+      "slug": "duckstation",
+      "name": "DuckStation",
+      "version": "rolling-20261107-030920",
+      "os": "windows",
+      "architecture": "x64",
+      "officialUrl": "https://www.duckstation.org/",
+      "downloadPage": "https://www.duckstation.org/windl",
+      "url": "https://github.com/stenzek/duckstation/releases/download/latest/duckstation-windows-x64-release.zip",
+      "sha256": "ca02e8eac40c0c6de801638f6b16bec80b605b5df32e406fe2fba7f21016b14b",
+      "bytes": 75019319,
+      "format": "zip",
+      "executable": "duckstation-qt-x64-ReleaseLTCG.exe",
+      "allowedHosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "dl.dolphin-emu.org",
+        "stable.eden-emu.dev"
+      ],
+      "license": "CC-BY-NC-ND-4.0",
+      "licenseUrl": "https://github.com/stenzek/duckstation/blob/master/LICENSE",
+      "deploymentReview": "Noncommercial license: obtain permission before commercial venue deployment.",
+      "verifiedAt": "2026-11-10T21:14:01Z",
+      "requirements": {
+        "runtime": "Microsoft Visual C++ v14 x64",
+        "documentation": "https://github.com/stenzek/duckstation",
+        "firmware": "User-supplied PlayStation BIOS"
+      }
+    },
+    {
+      "slug": "pcsx2",
+      "name": "PCSX2",
+      "version": "v2.8.2",
+      "os": "windows",
+      "architecture": "x64",
+      "officialUrl": "https://pcsx2.net/",
+      "downloadPage": "https://pcsx2.net/downloads/",
+      "url": "https://github.com/PCSX2/pcsx2/releases/download/v2.8.2/pcsx2-v2.8.2-windows-x64-Qt.7z",
+      "sha256": "7dfc829ca1994cc1045ac49f05e39b6cf968b72e6a374c40e05c2a2b4ac200b4",
+      "bytes": 25670075,
+      "format": "7z",
+      "executable": "pcsx2-qt.exe",
+      "allowedHosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "dl.dolphin-emu.org",
+        "stable.eden-emu.dev"
+      ],
+      "license": "GPL-3.0-or-later",
+      "licenseUrl": "https://github.com/PCSX2/pcsx2/blob/master/COPYING.GPLv3",
+      "deploymentReview": "Review license and bundled third-party notices before redistributing a cabinet image.",
+      "verifiedAt": "2026-11-10T21:14:01Z",
+      "requirements": {
+        "runtime": "Microsoft Visual C++ v14 x64",
+        "documentation": "https://pcsx2.net/docs/setup/requirements/",
+        "firmware": "User-supplied PS2 BIOS"
+      }
+    },
+    {
+      "slug": "dolphin",
+      "name": "Dolphin",
+      "version": "2609b",
+      "os": "windows",
+      "architecture": "x64",
+      "officialUrl": "https://dolphin-emu.org/",
+      "downloadPage": "https://dolphin-emu.org/download/",
+      "url": "https://dl.dolphin-emu.org/releases/2609b/dolphin-2609b-x64.7z",
+      "sha256": "926eb7594d885b4fba8fd9807058d90618efab4b3d75d1ef297022ba14925133",
+      "bytes": 20028240,
+      "format": "7z",
+      "executable": "Dolphin-x64/Dolphin.exe",
+      "allowedHosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "dl.dolphin-emu.org",
+        "stable.eden-emu.dev"
+      ],
+      "license": "GPL-2.0-or-later",
+      "licenseUrl": "https://github.com/dolphin-emu/dolphin/blob/master/COPYING",
+      "deploymentReview": "Review license and bundled third-party notices before redistributing a cabinet image.",
+      "verifiedAt": "2026-11-10T21:14:01Z",
+      "requirements": {
+        "runtime": "Microsoft Visual C++ v14 x64",
+        "documentation": "https://dolphin-emu.org/docs/faq/",
+        "firmware": "HLE / GameCube skip-IPL requires no BIOS in the current adapter"
+      }
+    },
+    {
+      "slug": "rpcs3",
+      "name": "RPCS3",
+      "version": "0.0.43-20581",
+      "os": "windows",
+      "architecture": "x64",
+      "officialUrl": "https://rpcs3.net/",
+      "downloadPage": "https://rpcs3.net/download",
+      "url": "https://github.com/RPCS3/rpcs3-binaries-win/releases/download/build-fd027c99b8824e9a9b6f5b2d5ae33f9202e29da3/rpcs3-v0.0.43-20581-fd027c99_win64_msvc.7z",
+      "sha256": "b5a1d65d001a77645a9367349eb94dc2d8fdfa7ecbb97a054b372bacf010bd1d",
+      "bytes": 37222119,
+      "format": "7z",
+      "executable": "rpcs3.exe",
+      "allowedHosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "dl.dolphin-emu.org",
+        "stable.eden-emu.dev"
+      ],
+      "license": "GPL-2.0-only",
+      "licenseUrl": "https://github.com/RPCS3/rpcs3/blob/master/LICENSE",
+      "deploymentReview": "Review license and bundled third-party notices before redistributing a cabinet image.",
+      "verifiedAt": "2026-11-10T21:14:01Z",
+      "requirements": {
+        "runtime": "Microsoft Visual C++ v14 x64",
+        "documentation": "https://rpcs3.net/quickstart",
+        "firmware": "Install official PS3 firmware through RPCS3"
+      }
+    },
+    {
+      "slug": "eden",
+      "name": "Eden",
+      "version": "v0.2.1",
+      "os": "windows",
+      "architecture": "x64",
+      "officialUrl": "https://eden-emu.dev/",
+      "downloadPage": "https://eden-emu.dev/downloads/",
+      "url": "https://stable.eden-emu.dev/v0.2.1/Eden-Windows-v0.2.1-amd64-clang-pgo.zip",
+      "sha256": "6c1b53ce325170a026cc0f87098380027dc6170d94ba95f913aab7596fd097cb",
+      "bytes": 36943177,
+      "format": "zip",
+      "executable": "eden.exe",
+      "allowedHosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "dl.dolphin-emu.org",
+        "stable.eden-emu.dev"
+      ],
+      "license": "GPL-3.0-or-later",
+      "licenseUrl": "https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt",
+      "deploymentReview": "Review license and bundled third-party notices before redistributing a cabinet image.",
+      "verifiedAt": "2026-11-10T21:14:01Z",
+      "requirements": {
+        "memory": "16 GB recommended",
+        "documentation": "https://eden-emu.dev/system-requirements/",
+        "firmware": "User-supplied Switch keys and firmware; never distributed in the catalog",
+        "graphics": "Vulkan 1.1 or OpenGL 4.6 minimum"
+      }
+    }
+  ]
+}

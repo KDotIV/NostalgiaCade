@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NostalgiaCade.Desktop"
+        xmlns:client="using:NostalgiaCade.Client"
+        x:Class="NostalgiaCade.Desktop.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="NostalgiaCade" Width="1180" Height="780" MinWidth="920" MinHeight="640"
+        WindowStartupLocation="CenterScreen">
+  <Grid ColumnDefinitions="220,*">
+    <Border Background="#171B25" Padding="24,32">
+      <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <StackPanel Spacing="8">
+          <TextBlock Text="N / C" FontSize="30" FontWeight="Bold" Foreground="#DDF68D" />
+          <TextBlock Text="NOSTALGIACADE" FontSize="13" FontWeight="SemiBold" LetterSpacing="1.5" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Margin="-8,44,-8,0" Spacing="8">
+          <Button Classes="nav" Content="Library" Command="{Binding OpenLibraryCommand}" />
+          <Button x:Name="SystemButton" Classes="nav" Content="System" Command="{Binding OpenSystemCommand}" />
+        </StackPanel>
+        <StackPanel Grid.Row="3" Spacing="8">
+          <TextBlock Text="YOUR CABINET" FontSize="11" Foreground="#7D889D" LetterSpacing="1" />
+          <TextBlock Text="Free play" FontSize="14" />
+          <TextBlock Text="F11 · Full screen" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" Margin="36,32" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="24">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="8">
+          <TextBlock Text="WELCOME BACK" Foreground="#DDF68D" FontSize="11" LetterSpacing="2" />
+          <TextBlock Text="Make room for the classics." FontSize="28" FontWeight="SemiBold" />
+          <TextBlock Text="One cabinet. A collection worth coming back to." Classes="muted" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="primary" Content="Refresh connection" Command="{Binding RefreshCommand}"
+                VerticalAlignment="Center" />
+      </Grid>
+
+      <StackPanel Grid.Row="1" Spacing="12">
+      <Border IsVisible="{Binding SetupRequired}" Classes="panel" Padding="16">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Choose your storage folders to get started" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <Button Content="Open CLI setup guide" Command="{Binding ConfigureStorageCommand}" />
+        </StackPanel>
+      </Border>
+      <Border IsVisible="{Binding HasError}" Background="#3A252A" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Action needs attention" FontWeight="SemiBold" Foreground="#FFC1B8" />
+          <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#F1D4D0" />
+        </StackPanel>
+      </Border>
+      </StackPanel>
+
+      <Grid Grid.Row="2" IsVisible="{Binding ShowLibrary}" RowDefinitions="Auto,*" RowSpacing="18">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Explore your genres" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Five ways to play. Choose a collection to preview." Classes="muted" />
+        </StackPanel>
+        <Grid Grid.Row="1" ColumnDefinitions="230,*" ColumnSpacing="20">
+          <ListBox x:Name="GenreList" ItemsSource="{Binding Genres}" SelectedItem="{Binding SelectedGenre}" Background="Transparent"
+                   BorderThickness="0" Padding="0" HorizontalAlignment="Stretch">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="client:Genre">
+                <StackPanel Margin="8,12" Spacing="6">
+                  <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding TargetEntries, StringFormat='{}{0} planned titles'}" FontSize="11" Classes="muted" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Border Grid.Column="1" Classes="panel">
+            <Grid RowDefinitions="Auto,*,Auto">
+              <StackPanel Spacing="10">
+                <TextBlock Text="COLLECTION PREVIEW" Foreground="#7D889D" FontSize="11" LetterSpacing="1.5" />
+                <TextBlock Text="{Binding SelectedGenreName}" FontSize="27" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="14" IsVisible="{Binding EmptyLibrary}">
+                <TextBlock Text="＋" FontSize="48" Foreground="#DDF68D" />
+                <TextBlock Text="A fresh start for your library" FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="No games are installed in this genre. Add a game or collection through the operator CLI to start playing."
+                           Classes="muted" TextWrapping="Wrap" LineHeight="24" />
+              </StackPanel>
+              <Grid Grid.Row="1" IsVisible="{Binding HasGames}" Margin="0,20" RowDefinitions="*,Auto" RowSpacing="12">
+                <ListBox x:Name="GameList" ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}">
+                  <ListBox.ItemTemplate><DataTemplate x:DataType="client:LocalGame">
+                    <StackPanel Margin="8" Spacing="4"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding EmulatorId}" Classes="muted" FontSize="12" /></StackPanel>
+                  </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
+                  <Button Content="Play" Classes="primary" Command="{Binding PlayCommand}" />
+                  <Button Content="Exit game" Command="{Binding StopGameCommand}" />
+                </StackPanel>
+              </Grid>
+              <Border Grid.Row="2" BorderBrush="#303847" BorderThickness="0,1,0,0" Padding="0,16,0,0">
+                <TextBlock Text="{Binding SessionDescription}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+              </Border>
+            </Grid>
+          </Border>
+        </Grid>
+      </Grid>
+
+      <Border Grid.Row="2" Classes="panel" IsVisible="{Binding ShowSystem}">
+        <StackPanel Spacing="20">
+          <TextBlock Text="System details" FontSize="24" FontWeight="SemiBold" />
+          <TextBlock Text="Connection and storage information for this cabinet." Classes="muted" />
+          <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="20">
+            <TextBlock Text="Core version" Classes="muted" /><TextBlock Grid.Column="1" Text="{Binding CoreVersion}" />
+            <TextBlock Grid.Row="1" Text="Database schema" Classes="muted" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DatabaseVersion}" />
+            <TextBlock Grid.Row="2" Text="Platform" Classes="muted" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Platform}" />
+            <TextBlock Grid.Row="3" Text="Local data folder" Classes="muted" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DataDirectory}" TextWrapping="Wrap" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding ConnectionStatus}" Classes="muted" FontSize="12" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="{Binding LocalGameCount}" Foreground="#DDF68D" FontWeight="SemiBold" />
+          <TextBlock Text="local games" Classes="muted" FontSize="12" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>
