@@ -29,6 +29,7 @@ jobs:
     # Never make private SQL available to pull-request code. Enable only after
     # configuring a protected private-build environment and its secret.
     if: vars.NCADE_PRIVATE_BUILDS_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    environment: private-build
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -59,6 +60,7 @@ jobs:
 
   postgres:
     if: vars.NCADE_PRIVATE_BUILDS_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    environment: private-build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:

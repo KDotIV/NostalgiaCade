@@ -34,15 +34,25 @@ bundles for rebuilding earlier application versions.
 
 ## Private CI setup
 
-The workflow always builds/tests the independent API without SQL. Desktop and
-database jobs require these repository settings, which are not provisioned by
-the source changes:
+The workflow always builds/tests the independent API without SQL. On November 11,
+2026, `KDotIV/NostalgiaCade` was configured with the `private-build` environment,
+an exact `main` branch restriction, `KDotIV` as required reviewer, and the
+environment-only `NCADE_MIGRATIONS_ZIP_BASE64` secret. The repository variable
+`NCADE_PRIVATE_BUILDS_ENABLED` enables the desktop and database jobs. Both jobs
+must explicitly reference `environment: private-build` to access that secret.
+
+For a new repository, reproduce these settings:
 
 1. Create a protected GitHub environment named `private-build`, restrict it to
    the trusted default branch, and require approval for its secrets.
 2. Store the base64-encoded ZIP as its `NCADE_MIGRATIONS_ZIP_BASE64` secret. Base64
    is transport encoding; GitHub's secret storage/access controls provide privacy.
 3. Set the repository variable `NCADE_PRIVATE_BUILDS_ENABLED` to `true`.
+
+For each trusted `main` run, open **Actions → Foundation checks → Review
+deployments**, select `private-build`, and approve it after reviewing the commit.
+The owner may approve their own run, which is necessary for this single-owner
+repository. Approval releases both private jobs; pull requests do not qualify.
 
 To prepare the value locally without printing SQL/base64 into a terminal log:
 
@@ -57,7 +67,9 @@ never receive this bundle. Go caching is disabled in private jobs because compil
 packages embed SQL. Do not upload private SQL, the archive, or binaries
 embedding it as public CI artifacts. The current ZIP is small enough for a secret;
 move to authenticated private artifact storage if the bundle grows beyond GitHub's
-secret size limit. GitHub settings remain a deployment setup step.
+secret size limit. When updating the bundle, replace the environment secret rather
+than creating a repository-wide secret, and verify the corresponding checksum
+manifest before approving the next run.
 
 See GitHub's [environment protection](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 and [secret limits](https://docs.github.com/en/actions/reference/security/secrets).
