@@ -50,7 +50,58 @@ container port from direct clients. The header alone is not proof of TLS when a
 client can bypass ingress. Remote configurations also verify the database TLS
 certificate. Health probes are anonymous and expose only status, not SQL errors.
 
-## Azure Container Apps
+## Azure App Service on an existing Windows plan
+
+The deployed QA API uses one Windows App Service app on the existing plan. Its
+Go executable runs under IIS HttpPlatformHandler; no container registry, Container
+Apps environment or second compute plan is required. The existing Sengoku backend
+is a separate application and must not be overwritten. Keep a stable NCade app
+name and update that same app on subsequent releases. GitHub Actions currently
+builds and tests only; it does not deploy to Azure.
+
+[deploy/azure/catalog-api-appservice.bicep](../deploy/azure/catalog-api-appservice.bicep)
+references an existing Windows plan and creates only the named app and its
+publishing-credential policies. It enables HTTPS, readiness checks, one process,
+and administrator CIDR restrictions for both the API and deployment endpoint.
+The plan's tier and instance count are not changed. Review an incremental
+deployment preview before initially provisioning the app. Keep subscription,
+resource group, app name and administrator CIDRs in private deployment parameters.
+
+Configure `NCADE_POSTGRES_DSN`, `NCADE_ADMIN_TOKEN` and `NCADE_ADMIN_SUBJECT` through
+App Service's encrypted application settings or Key Vault references. The database
+connection must use `sslmode=verify-full` and a dedicated runtime login with the
+permissions described in [catalog administration](catalog-admin-api.md). Provision
+that login through private administrative tooling. Credentials and SQL are not
+included in the application ZIP. Disable basic SCM/FTP publishing and use Azure
+CLI's Microsoft Entra sign-in for deployment.
+
+Build and update the existing app explicitly:
+
+```powershell
+./scripts/Build-AzureApi.ps1
+az webapp show --subscription <subscription-id> --resource-group <existing-group> --name <existing-ncade-app>
+az webapp deploy --subscription <subscription-id> --resource-group <existing-group> --name <existing-ncade-app> `
+  --src-path artifacts/azure/ncade-api.zip --type zip --clean true --restart true
+```
+
+The ZIP contains only `ncade-api.exe` and `web.config`. IIS supplies its dynamic
+loopback port through the startup arguments and terminates public HTTPS through
+App Service ingress. Its request timeout uses whole-minute increments; the Go
+server retains its shorter request limits. Logs go to the app's `LogFiles`
+directory. Keep failed-request tracing disabled when testing bearer credentials.
+
+The Azure Postman environment uses the deployed HTTPS origin and the Local Vault
+reference `ncade-azure-admin-token`. On the configured administrator workstation,
+`./scripts/Copy-AzureAdminToken.ps1` copies the separately generated Azure token
+from its current-user DPAPI backup for pasting into that Vault entry. The JSON
+export contains no token. Update the administrator CIDR restriction if your public
+IP changes; a blocked address receives HTTP 403 before reaching the API.
+
+The Windows deployment has passed health, authentication, all read endpoints and
+artifact validation checks. Runtime artifact/source/edition permissions are
+verified with a transaction that is rolled back, preserving the catalog.
+
+## Azure Container Apps alternative
 
 The [Dockerfile](../Dockerfile) builds a Linux binary and a non-root image with CA
 certificates. Its build context excludes migrations, credentials, backups and
@@ -92,9 +143,9 @@ permissions described in [catalog-admin-api.md](catalog-admin-api.md). After
 deployment set Postman's Azure `baseUrl` to the template output and supply the
 Azure-specific token in Local Vault. There is no browser login/refresh endpoint.
 
-The template has been compiled locally and the API cross-compiled for Linux.
-Container execution and an Azure deployment remain to be verified in their target
-environment; this workspace has no Docker engine. No Azure resources were deployed.
+This is an alternative hosting target, not an additional service to deploy beside
+the existing App Service API. The template compiles and the container image builds
+in CI. A Container Apps runtime deployment has not been performed.
 
 References: [Container Apps ingress](https://learn.microsoft.com/en-us/azure/container-apps/ingress-overview),
 [health probes](https://learn.microsoft.com/en-us/azure/container-apps/health-probes),
