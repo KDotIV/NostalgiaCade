@@ -81,7 +81,8 @@ func run(dataDir string) error {
 	if err := os.WriteFile(tempPath, payload, 0600); err != nil {
 		return err
 	}
-	if err := os.Rename(tempPath, endpointPath); err != nil {
+	defer os.Remove(tempPath)
+	if err := replaceEndpoint(ctx, tempPath, endpointPath); err != nil {
 		return err
 	}
 	defer os.Remove(endpointPath)

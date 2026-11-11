@@ -16,19 +16,36 @@ public class CoreIntegrationTests
         Directory.CreateDirectory(directory);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         // The core must replace stale discovery data while starting.
-        await File.WriteAllTextAsync(Path.Combine(directory, "core-endpoint.json"), "{\"pipeName\":null,\"protocolVersion\":1}", deadline.Token);
-        var start = new ProcessStartInfo(executable!) { UseShellExecute = false, CreateNoWindow = true };
+        var endpoint = Path.Combine(directory, "core-endpoint.json");
+        await File.WriteAllTextAsync(endpoint, "{\"pipeName\":null,\"protocolVersion\":1}", deadline.Token);
+        // Hold a reader across the first publication attempt, then release it.
+        // Windows must tolerate this transient lock instead of exiting.
+        using var concurrentReader = new FileStream(endpoint, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var start = new ProcessStartInfo(executable!) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
         start.ArgumentList.Add("--data-dir");
         start.ArgumentList.Add(directory);
         using var initial = Process.Start(start)!;
+        var startupErrors = initial.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
         try
         {
             await using (var session = new CoreSession(directory, executable!))
             {
+                while (!File.Exists(endpoint + ".tmp"))
+                {
+                    if (initial.HasExited)
+                        throw new IOException("Core exited before publishing discovery: " + await startupErrors);
+                    await Task.Delay(10, deadline.Token);
+                }
+                await Task.Delay(100, deadline.Token);
+                concurrentReader.Dispose();
                 // Wait until the explicitly owned test process has published its endpoint.
-                var endpoint = Path.Combine(directory, "core-endpoint.json");
-                while (!(await File.ReadAllTextAsync(endpoint, deadline.Token)).Contains("NostalgiaCade.", StringComparison.Ordinal))
+                while (true)
+                {
+                    if (initial.HasExited)
+                        throw new IOException("Core exited before publishing discovery: " + await startupErrors);
+                    if ((await File.ReadAllTextAsync(endpoint, deadline.Token)).Contains("NostalgiaCade.", StringComparison.Ordinal)) break;
                     await Task.Delay(50, deadline.Token);
+                }
                 var first = await session.ConnectAsync(deadline.Token);
                 Assert.NotNull(await first.CallAsync<CoreStatus>("system.status", cancellationToken: deadline.Token));
                 initial.Kill(); // Only the process this test directly launched.
@@ -39,7 +56,9 @@ public class CoreIntegrationTests
         }
         finally
         {
-            if (!initial.HasExited) { initial.Kill(); await initial.WaitForExitAsync(deadline.Token); }
+            concurrentReader.Dispose();
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            if (!initial.HasExited) { initial.Kill(); await initial.WaitForExitAsync(cleanup.Token); }
             Directory.Delete(directory, recursive: true);
         }
     }
