@@ -12,3 +12,4 @@
 *.db-wal
 *.log
 *.user
+internal/database/migrations/postgres/*

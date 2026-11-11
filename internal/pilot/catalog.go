@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -108,7 +109,7 @@ func Seed(ctx context.Context, db *sql.DB, subject string, bindings Bindings) er
 		if status != "draft" {
 			return fmt.Errorf("refusing to mutate a published pilot release")
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.pilot_genres(genre_id,release_id) VALUES($1,$2) ON CONFLICT(genre_id) DO NOTHING`, genre, releaseID); err != nil {
+		if _, err = tx.ExecContext(ctx, `UPDATE catalog.suites SET selected_release_id=$2 WHERE id=$1 AND selected_release_id IS NULL`, suiteID, releaseID); err != nil {
 			return err
 		}
 	}
@@ -129,7 +130,7 @@ func Seed(ctx context.Context, db *sql.DB, subject string, bindings Bindings) er
 			return err
 		}
 		metadata := jsonText(map[string]any{"candidate": g, "metadataReview": "draft", "localPlayersReview": "pending", "compatibility": "unverified", "commercialUse": "unreviewed", "sourcePolicy": "user_import", "cabinetProfile": "controller mapping and performance validation required", "research": research[g.Genre]})
-		if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.pilot_games(game_key,edition_id,emulator_slug,metadata) VALUES($1,$2,$3,$4) ON CONFLICT(game_key) DO NOTHING`, g.Key, editionID, g.Emulator, metadata); err != nil {
+		if _, err = tx.ExecContext(ctx, `UPDATE catalog.game_editions SET game_key=$1,emulator_slug=$3,metadata=$4 WHERE id=$2 AND game_key IS NULL`, g.Key, editionID, g.Emulator, metadata); err != nil {
 			return err
 		}
 		if releases[g.Emulator] == "" {
@@ -154,10 +155,7 @@ func Seed(ctx context.Context, db *sql.DB, subject string, bindings Bindings) er
 			if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.artifact_sources(id,artifact_id,mode) VALUES($1,$2,'user_import') ON CONFLICT(id) DO NOTHING`, ID("import-source/"+b.SHA256), artifactID); err != nil {
 				return err
 			}
-			if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.game_edition_artifacts(edition_id,artifact_id,role) VALUES($1,$2,'operator-import') ON CONFLICT DO NOTHING`, editionID, artifactID); err != nil {
-				return err
-			}
-			if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.pilot_sources(game_key,artifact_id,filename,reference_only) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`, g.Key, artifactID, b.Filename, b.Reference); err != nil {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.game_edition_artifacts(edition_id,artifact_id,role,filename,reference_only) VALUES($1,$2,'operator-import',$3,$4) ON CONFLICT DO NOTHING`, editionID, artifactID, b.Filename, b.Reference); err != nil {
 				return err
 			}
 		}
@@ -167,29 +165,7 @@ func Seed(ctx context.Context, db *sql.DB, subject string, bindings Bindings) er
 			return err
 		}
 	}
-	for _, source := range ResearchSources() {
-		if _, err = tx.ExecContext(ctx, `INSERT INTO catalog.source_research(url,access_status,download_authorization,notes) VALUES($1,$2,'unverified',$3) ON CONFLICT(url) DO NOTHING`, source.URL, source.Access, source.Note); err != nil {
-			return err
-		}
-	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO management.audit_events(actor_subject,action,resource_id,outcome) VALUES($1,'pilot.catalog.seed','1990-2015','100 draft candidates; user-import metadata only')`, subject); err != nil {
-		return err
-	}
 	return tx.Commit()
-}
-
-type ResearchSource struct{ URL, Access, Note string }
-
-// Research references are deliberately separate from executable download sources.
-// No forum session, credentials or proprietary game bytes are stored here.
-func ResearchSources() []ResearchSource {
-	return []ResearchSource{
-		{"https://r-roms.github.io/", "reviewed_index", "User-provided platform index; references preservation metadata. No distribution authorization established."},
-		{"https://r-roms.github.io/Sony/sony-playstation-2", "reviewed_index", "PS2 collection index reviewed; no per-title SHA-256, compatibility or download permission verified."},
-		{"https://r-roms.github.io/Sony/sony-playstation-3", "reviewed_index", "PS3 collection index reviewed; exact edition, disc layout and authorization remain unverified."},
-		{"https://r-roms.github.io/Nintendo/nintendo-gamecube", "reviewed_index", "GameCube index reviewed; includes RVZ and disc-image collections. No artifacts ingested."},
-		{"https://fora.snahp.eu/", "not_accessible", "User-provided research reference. Web access failed; Firefox Computer Use blocked by browser URL-policy support. Forum contents and downloads unverified."},
-	}
 }
 func jsonText(v any) string {
 	b, err := json.Marshal(v)
@@ -215,4 +191,30 @@ func Prerequisites() []Prerequisite {
 		{"eden", "switch-keys", "eden/keys/prod.keys", "https://eden-emu.dev/", "Supply keys from your own console; never publish key contents."},
 		{"eden", "switch-firmware", "eden/nand/system/Contents/registered", "https://eden-emu.dev/", "Supply extracted firmware. Startup tested; shutdown reliability remains unqualified."},
 	}
+}
+
+func LoadPrerequisites(ctx context.Context, db *sql.DB) ([]Prerequisite, error) {
+	rows, err := db.QueryContext(ctx, `SELECT emulator_slug,step_key,instructions FROM catalog.onboarding_steps ORDER BY emulator_slug,step_key`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	steps := []Prerequisite{}
+	for rows.Next() {
+		var emulator, key string
+		var body []byte
+		var step Prerequisite
+		if err = rows.Scan(&emulator, &key, &body); err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(body, &step); err != nil {
+			return nil, err
+		}
+		path := filepath.FromSlash(step.RelativePath)
+		if step.Emulator != emulator || step.Kind != key || path == "" || filepath.IsAbs(path) || filepath.Clean(path) == ".." || strings.HasPrefix(filepath.Clean(path), ".."+string(filepath.Separator)) || strings.Contains(path, ":") {
+			return nil, fmt.Errorf("invalid onboarding step")
+		}
+		steps = append(steps, step)
+	}
+	return steps, rows.Err()
 }

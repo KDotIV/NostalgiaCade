@@ -42,6 +42,8 @@ public sealed class CoreSession(string dataDirectory, string executablePath) : I
                 start.ArgumentList.Add("--data-dir");
                 start.Environment.Remove("NCADE_POSTGRES_DSN");
                 start.Environment.Remove("NCADE_TEST_POSTGRES_DSN");
+                start.Environment.Remove("NCADE_ADMIN_TOKEN");
+                start.Environment.Remove("NCADE_ADMIN_SUBJECT");
                 start.ArgumentList.Add(DataDirectory);
                 _startupError = null;
                 _ownedProcess = new Process { StartInfo = start };

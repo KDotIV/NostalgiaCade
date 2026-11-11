@@ -70,27 +70,17 @@ func PublishResearch(ctx context.Context, db *sql.DB, subject string, observatio
 	}
 	for key, records := range grouped {
 		var status string
-		if err = tx.QueryRowContext(ctx, `SELECT sr.status FROM catalog.pilot_games p JOIN catalog.suite_games sg ON sg.edition_id=p.edition_id JOIN catalog.suite_releases sr ON sr.id=sg.release_id WHERE p.game_key=$1 FOR UPDATE OF sr`, key).Scan(&status); err != nil {
+		if err = tx.QueryRowContext(ctx, `SELECT sr.status FROM catalog.game_editions p JOIN catalog.suite_games sg ON sg.edition_id=p.id JOIN catalog.suite_releases sr ON sr.id=sg.release_id WHERE p.game_key=$1 FOR UPDATE OF sr`, key).Scan(&status); err != nil {
 			return err
 		}
 		if status != "draft" {
 			return fmt.Errorf("refusing to mutate published research")
 		}
 		// Replace this bounded observation set; preserve all unrelated review fields.
-		_, err = tx.ExecContext(ctx, `UPDATE catalog.pilot_games SET metadata=metadata || jsonb_build_object('externalFileResearch',$2::jsonb,'externalFileResearchStatus','publisher_metadata_unverified','externalChecksumScope','ZIP archive; not extracted ROM; not locally verified') WHERE game_key=$1`, key, jsonText(records))
+		_, err = tx.ExecContext(ctx, `UPDATE catalog.game_editions SET metadata=metadata || jsonb_build_object('externalFileResearch',$2::jsonb,'externalFileResearchStatus','publisher_metadata_unverified','externalChecksumScope','ZIP archive; not extracted ROM; not locally verified') WHERE game_key=$1`, key, jsonText(records))
 		if err != nil {
 			return err
 		}
-		for _, r := range records {
-			_, err = tx.ExecContext(ctx, `INSERT INTO catalog.source_research(url,access_status,download_authorization,notes) VALUES($1,'reviewed_index','unverified','Public file metadata inspected via archive.org metadata API; no game payload acquired or approved.') ON CONFLICT(url) DO NOTHING`, r.SourcePage)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO management.audit_events(actor_subject,action,resource_id,outcome) VALUES($1,'pilot.research.import','public-file-metadata',$2)`, subject, fmt.Sprintf("%d observations; no artifact/download authorization changes", len(observations)))
-	if err != nil {
-		return err
 	}
 	return tx.Commit()
 }

@@ -2,7 +2,7 @@
 
 NostalgiaCade is being designed as a managed arcade library for commercial cabinets and venues. Operators select a curated genre locally or through a central dashboard; a Go application core installs its dependencies, guides hardware setup, and launches games through supported emulators.
 
-**Status: PostgreSQL-backed pilot installer implemented, November 10, 2026.** The Avalonia desktop connects to the Go core over a Windows named pipe. CLI guides select storage paths and onboard BIOS/firmware. Operators can import/reference games, download authorized raw files, launch/exit Dolphin, DuckStation, PCSX2, RPCS3 and Eden, and switch genre collections with old-game removal first. The admin-side pilot coordinator reads 100 draft catalog entries and reviewed emulator packages from PostgreSQL, then reports actual installation operations and inventory. No ROMs, BIOS, keys or emulator binaries are included in the repository.
+**Status: consolidated PostgreSQL catalog and Sengoku-Admin artifact API implemented, November 11, 2026.** The Avalonia desktop connects to the Go core over a Windows named pipe. CLI guides select storage paths and onboard BIOS/firmware. Operators can import/reference games, download authorized raw files, launch/exit Dolphin, DuckStation, PCSX2, RPCS3 and Eden, and switch genre collections with old-game removal first. The admin-side pilot coordinator reads 100 draft catalog entries and reviewed emulator packages from PostgreSQL, then records installation operations in local journals. No ROMs, BIOS, keys or emulator binaries are included in the repository.
 
 ## Run locally
 
@@ -33,7 +33,7 @@ PostgreSQL is optional for running the desktop. The database test requires a com
 - Verified ZIP/7z package installation for DuckStation, PCSX2, Dolphin, RPCS3 and Eden; admin-side PostgreSQL catalog publication/export using environment configuration.
 - PostgreSQL-backed CLI installation, source preflight, explicit partial-test selection, five 20-entry draft collections from 1990–2015, local source hashing, prerequisite metadata and installation reporting. See the [E2E guide](docs/postgres-e2e.md).
 
-Per-game/cabinet/peripheral validation, automatic hardware/per-game tuning, cloud API/dashboard, authentication and installer packaging remain subsequent work. The catalog admin tool uses database-role authorization; application-level Sengoku-Admin enforcement belongs to the future authenticated API. The separate LAN multiplayer server remains the final MVP feature milestone.
+Per-game/cabinet/peripheral validation, automatic hardware/per-game tuning, cloud hosting/dashboard, multi-user identity and installer packaging remain subsequent work. The admin HTTP API enforces a server-configured Sengoku-Admin bearer credential for artifact insertion. See [API setup and requests](docs/catalog-admin-api.md). The separate LAN multiplayer server remains the final MVP feature milestone.
 
 ## Design documents
 
@@ -53,4 +53,4 @@ Confirmed direction: C# interfaces, Go application/backend logic, PostgreSQL cat
 
 A separate LAN-only venue multiplayer server is included as the final MVP feature milestone. Same-cabinet co-op works without a network; supported cross-cabinet sessions require per-game research. Only Sengoku-Admin can add games to the shared catalog; users can maintain local-only game entries independently.
 
-No database credentials belong in this repository or a distributed client. Admin tools read `NCADE_POSTGRES_DSN`; the cabinet uses local SQLite and a reviewed catalog snapshot/export. Implementation tests use disposable local databases. Five reviewed emulator packages and 100 draft games are in Azure. The additive pilot schema has its own migration ledger; existing foundation history remains unreconciled. See the E2E guide before applying database migrations.
+No database credentials belong in this repository or a distributed client. Admin tools read `NCADE_POSTGRES_DSN`; the cabinet uses local SQLite and a reviewed catalog snapshot/export. Implementation tests use disposable local databases. Five reviewed emulator packages and 100 draft games are in Azure. Migration 005 consolidates pilot metadata into the catalog and removes remote fleet/reporting and cabinet-state copies. The manually provisioned foundation uses a separate cleanup ledger without invented migration history. See the E2E guide before applying database migrations.

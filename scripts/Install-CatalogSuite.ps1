@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory)][string]$Root,
     [Parameter(Mandatory)][ValidateSet('racing','fighting','action-adventure','platform','hack-and-slash')][string]$Genre,
-    [Parameter(Mandatory)][string]$Bindings,
+    [string]$Bindings = '',
     [Parameter(Mandatory)][string]$Cabinet,
     [string]$Subject = 'Sengoku-Admin',
     [string]$FirmwareFrom = '',
@@ -17,7 +17,8 @@ $priorDsn = $env:NCADE_POSTGRES_DSN
 try {
     if (-not $env:NCADE_POSTGRES_DSN) { $env:NCADE_POSTGRES_DSN = [Environment]::GetEnvironmentVariable('NCADE_POSTGRES_DSN','User') }
     if (-not $env:NCADE_POSTGRES_DSN) { throw 'Set NCADE_POSTGRES_DSN with scripts/Set-CatalogConnection.ps1 first.' }
-    $selectionArgs = @('--genre',$Genre,'--bindings',[IO.Path]::GetFullPath($Bindings))
+    $selectionArgs = @('--genre',$Genre)
+    if ($Bindings) { $selectionArgs += @('--bindings',[IO.Path]::GetFullPath($Bindings)) }
     if ($AvailableOnly) { $selectionArgs += '--available-only' }
     $planJson = & $tool --action plan @selectionArgs
     $planExit = $LASTEXITCODE

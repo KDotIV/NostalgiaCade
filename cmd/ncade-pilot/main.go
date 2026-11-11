@@ -69,6 +69,15 @@ func run() error {
 		}
 		return emit(b)
 	}
+	if *action == "sync" {
+		if *journal == "" || *dataDir == "" {
+			return fmt.Errorf("sync requires --journal and --data-dir")
+		}
+		if err := pilot.SyncJournal(ctx, *dataDir, *journal); err != nil {
+			return fmt.Errorf("report reconciliation failed: %s", safeError(err))
+		}
+		return emit(map[string]bool{"synced": true})
+	}
 	bindings, err := pilot.ReadBindings(*bindingsPath)
 	if err != nil {
 		return err
@@ -97,12 +106,12 @@ func run() error {
 	}
 	if *action == "schema" {
 		if !*yes {
-			return fmt.Errorf("schema extension requires --yes; existing foundation data is retained")
+			return fmt.Errorf("catalog cleanup requires --yes; back up the remote database first")
 		}
 		if err = pilot.Migrate(ctx, db); err != nil {
 			return fmt.Errorf("pilot schema extension failed: %s", safeError(err))
 		}
-		return emit(map[string]any{"pilotSchema": "001_installation_catalog", "foundationHistory": "unchanged"})
+		return emit(map[string]any{"catalogSchema": "005_catalog_cleanup.sql"})
 	}
 	if *action == "seed" {
 		if *subject == "" {
@@ -119,7 +128,7 @@ func run() error {
 			Entries      int    `json:"entries"`
 			BoundSources int    `json:"boundSources"`
 		}
-		rows, e := db.QueryContext(ctx, `SELECT g.genre_id,count(DISTINCT p.game_key),count(DISTINCT s.game_key) FROM catalog.pilot_genres g JOIN catalog.suite_games sg ON sg.release_id=g.release_id JOIN catalog.pilot_games p ON p.edition_id=sg.edition_id LEFT JOIN catalog.pilot_sources s ON s.game_key=p.game_key GROUP BY g.genre_id ORDER BY g.genre_id`)
+		rows, e := db.QueryContext(ctx, `SELECT g.genre_id,count(DISTINCT p.game_key),count(DISTINCT s.edition_id) FROM catalog.suites g JOIN catalog.suite_games sg ON sg.release_id=g.selected_release_id JOIN catalog.game_editions p ON p.id=sg.edition_id LEFT JOIN catalog.game_edition_artifacts s ON s.edition_id=p.id GROUP BY g.genre_id ORDER BY g.genre_id`)
 		if e != nil {
 			return fmt.Errorf("cannot read pilot catalog; apply the extension and seed first")
 		}
@@ -136,15 +145,6 @@ func run() error {
 			return e
 		}
 		return emit(out)
-	}
-	if *action == "sync" {
-		if *journal == "" || *dataDir == "" {
-			return fmt.Errorf("sync requires --journal and --data-dir")
-		}
-		if err = pilot.SyncJournal(ctx, db, *dataDir, *journal); err != nil {
-			return fmt.Errorf("report reconciliation failed: %s", safeError(err))
-		}
-		return emit(map[string]bool{"synced": true})
 	}
 	selection, err := pilot.Plan(ctx, db, *genre, bindings, *partial)
 	if *action == "plan" {
@@ -168,7 +168,7 @@ func run() error {
 			return err
 		}
 	}
-	result, err := pilot.Install(ctx, db, selection, pilot.InstallOptions{DataDir: *dataDir, Root: *root, Cabinet: *cabinet, Subject: *subject, Archives: *archives, FirmwareFrom: *firmware}, func(s string) { fmt.Fprintln(os.Stderr, s) })
+	result, err := pilot.Install(ctx, selection, pilot.InstallOptions{DataDir: *dataDir, Root: *root, Cabinet: *cabinet, Subject: *subject, Archives: *archives, FirmwareFrom: *firmware}, func(s string) { fmt.Fprintln(os.Stderr, s) })
 	if e := emit(result); err == nil {
 		err = e
 	}

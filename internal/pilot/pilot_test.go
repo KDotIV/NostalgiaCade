@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/KdotIV/NostalgiaCade/internal/catalogapi"
 	"github.com/KdotIV/NostalgiaCade/internal/database"
 	"github.com/KdotIV/NostalgiaCade/internal/emucatalog"
 	"github.com/jackc/pgx/v5"
@@ -92,7 +93,7 @@ func TestPostgresPilot(t *testing.T) {
 		}
 	}
 	var count int
-	if err = db.QueryRow(`SELECT count(*) FROM catalog.pilot_games`).Scan(&count); err != nil || count != 100 {
+	if err = db.QueryRow(`SELECT count(*) FROM catalog.game_editions WHERE game_key IS NOT NULL`).Scan(&count); err != nil || count != 100 {
 		t.Fatalf("games %d: %v", count, err)
 	}
 	if err = db.QueryRow(`SELECT count(*) FROM catalog.suite_games`).Scan(&count); err != nil || count != 100 {
@@ -125,19 +126,48 @@ func TestPostgresPilot(t *testing.T) {
 	if _, err = Report(ctx, db); err != nil {
 		t.Fatal(err)
 	}
+	// Admin-published approved payloads can supply a suite without local bindings.
+	store := catalogapi.Store{DB: db}
+	input := catalogapi.ArtifactInput{Kind: "game", Bytes: 64, URL: "https://downloads.example.org/burnout.iso", SHA256: strings.Repeat("d", 64), Format: "iso", EditionID: ID("edition/burnout-3"), Filename: "burnout.iso"}
+	if _, err = store.CreateArtifact(ctx, input, "test-admin"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = Plan(ctx, db, "racing", b, true); err == nil {
+		t.Fatal("unreviewed payload became downloadable")
+	}
+	input.SHA256 = strings.Repeat("e", 64)
+	input.PermissionStatus = "approved"
+	input.LicenseEvidenceURL = "https://example.org/license"
+	if _, err = store.CreateArtifact(ctx, input, "test-admin"); err != nil {
+		t.Fatal(err)
+	}
+	downloadPlan, err := Plan(ctx, db, "racing", b, true)
+	if err != nil || len(downloadPlan.Manifest.Games) != 1 || downloadPlan.Manifest.Games[0].Source.Kind != "download" || len(downloadPlan.Onboarding) != 5 {
+		t.Fatal("approved download or database onboarding unavailable", downloadPlan, err)
+	}
+	// A newer save for the same edition must never replace the game payload.
+	input.Kind = "save_data"
+	input.SHA256 = strings.Repeat("f", 64)
+	input.Filename = "save.bin"
+	if _, err = store.CreateArtifact(ctx, input, "test-admin"); err != nil {
+		t.Fatal(err)
+	}
+	downloadPlan, err = Plan(ctx, db, "racing", b, true)
+	if err != nil || downloadPlan.Manifest.Games[0].SHA256 != strings.Repeat("e", 64) {
+		t.Fatal("save data selected as game", err)
+	}
 	observation.SourcePage = "https://archive.org/details/test?token=secret"
 	if err = observation.Validate(); err == nil {
 		t.Fatal("token-bearing research reference accepted")
 	}
-	// The extension ledger must not manufacture foundation migration history.
-	if err = db.QueryRow(`SELECT count(*) FROM public.schema_migrations`).Scan(&count); err != nil || count != 4 {
+	if err = db.QueryRow(`SELECT count(*) FROM public.schema_migrations`).Scan(&count); err != nil || count != 5 {
 		t.Fatal("foundation history changed", count, err)
 	}
 	var hash string
-	db.QueryRow(`SELECT sha256 FROM management.pilot_migrations`).Scan(&hash)
-	db.Exec(`UPDATE management.pilot_migrations SET sha256='changed'`)
+	db.QueryRow(`SELECT sha256 FROM public.schema_migrations WHERE version='005_catalog_cleanup.sql'`).Scan(&hash)
+	db.Exec(`UPDATE public.schema_migrations SET sha256='changed' WHERE version='005_catalog_cleanup.sql'`)
 	if err = Migrate(ctx, db); err == nil {
 		t.Fatal("modified migration accepted")
 	}
-	db.Exec(`UPDATE management.pilot_migrations SET sha256=$1`, hash)
+	db.Exec(`UPDATE public.schema_migrations SET sha256=$1 WHERE version='005_catalog_cleanup.sql'`, hash)
 }

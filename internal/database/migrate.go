@@ -22,6 +22,18 @@ type MigrationResult struct {
 // Migrate runs immutable, ordered migrations in one transaction. The lock spans
 // both the history check and DDL. Unknown or edited applied versions fail closed.
 func Migrate(ctx context.Context, db *sql.DB, dialect string) (MigrationResult, error) {
+	if dialect == "postgres" {
+		var manual, cleaned bool
+		if err := db.QueryRowContext(ctx, `SELECT to_regclass('catalog.emulators') IS NOT NULL AND to_regclass('public.schema_migrations') IS NULL, to_regclass('catalog.cleanup_migrations') IS NOT NULL`).Scan(&manual, &cleaned); err != nil {
+			return MigrationResult{}, err
+		}
+		if manual {
+			if cleaned {
+				return CleanupCatalog(ctx, db)
+			}
+			return MigrationResult{}, fmt.Errorf("untracked PostgreSQL foundation; back up and use --cleanup-catalog instead of replaying foundation DDL")
+		}
+	}
 	return migrateFS(ctx, db, dialect, migrations)
 }
 

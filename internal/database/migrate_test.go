@@ -207,7 +207,7 @@ func TestPostgresMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(first.Applied) != 4 {
+	if len(first.Applied) != 5 {
 		t.Fatalf("expected clean test database, applied %v", first.Applied)
 	}
 	second, err := Migrate(ctx, db, "postgres")
@@ -221,11 +221,8 @@ func TestPostgresMigrations(t *testing.T) {
 	if _, err := db.Exec("INSERT INTO catalog.games(id,title,release_year,players_min,players_max,created_by_subject) VALUES('00000000-0000-0000-0000-000000000001','Bad',2000,2,1,'test')"); err == nil {
 		t.Fatal("invalid player bounds accepted")
 	}
-	if _, err := db.Exec("INSERT INTO management.cabinets(id,organization_id,venue_id,name) VALUES('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003','Cabinet')"); err == nil {
-		t.Fatal("invalid tenant reference accepted")
-	}
-	if err := db.QueryRow("SELECT count(*) FROM management.memberships").Scan(&count); err != nil || count != 0 {
-		t.Fatal("migration must not create an administrator account")
+	if err := db.QueryRow("SELECT count(*) FROM information_schema.tables WHERE table_schema='management'").Scan(&count); err != nil || count != 0 {
+		t.Fatal("unrelated management tables remain")
 	}
 	// CHECK constraints must reject NULL, rather than accepting SQL's unknown.
 	if _, err := db.Exec(`INSERT INTO catalog.artifacts(id,kind,sha256,download_bytes,installed_bytes,format)

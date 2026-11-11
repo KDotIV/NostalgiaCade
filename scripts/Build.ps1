@@ -11,6 +11,8 @@ try {
     if ($LASTEXITCODE) { throw 'Migration tool build failed.' }
     go build -trimpath -o artifacts/bin/ncade-catalog.exe ./cmd/ncade-catalog
     if ($LASTEXITCODE) { throw 'Catalog admin tool build failed.' }
+    go build -trimpath -o artifacts/bin/ncade-api.exe ./cmd/ncade-api
+    if ($LASTEXITCODE) { throw 'Catalog API build failed.' }
     go build -trimpath -o artifacts/bin/ncade-pilot.exe ./cmd/ncade-pilot
     if ($LASTEXITCODE) { throw 'Pilot E2E operator tool build failed.' }
     dotnet build NostalgiaCade.slnx -c $Configuration

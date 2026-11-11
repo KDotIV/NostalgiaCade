@@ -34,13 +34,15 @@ try {
     & "$PostgresBin/createdb.exe" -h 127.0.0.1 -p $testPort -U ncade_test ncade_test_foundation
     if ($LASTEXITCODE) { throw 'Temporary database creation failed.' }
     $env:NCADE_TEST_POSTGRES_DSN = "postgres://ncade_test@127.0.0.1:$testPort/ncade_test_foundation?sslmode=disable"
-    go test ./internal/database -run '^TestPostgresMigrations$' -count=1 -v
+    go test ./internal/database -run '^TestPostgres(Migrations|CleanupMigration)$' -count=1 -v
     if ($LASTEXITCODE) { throw 'PostgreSQL migration tests failed.' }
     $env:NCADE_TEST_CATALOG = '1'
     go test ./internal/emucatalog -run '^TestPostgresCatalogPublication$' -count=1 -v
     if ($LASTEXITCODE) { throw 'PostgreSQL catalog publication tests failed.' }
     go test ./internal/pilot -run '^TestPostgresPilot$' -count=1 -v
     if ($LASTEXITCODE) { throw 'PostgreSQL pilot catalog tests failed.' }
+    go test ./internal/catalogapi -run '^TestPostgresArtifacts$' -count=1 -v
+    if ($LASTEXITCODE) { throw 'PostgreSQL artifact API tests failed.' }
 } finally {
     if ($started) {
         & "$PostgresBin/pg_ctl.exe" -D $dataPath -m fast -w stop

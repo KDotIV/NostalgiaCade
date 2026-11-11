@@ -57,5 +57,6 @@ jobs:
         env:
           NCADE_TEST_POSTGRES_DSN: 'postgres://ncade_test:ncade_ci_only@127.0.0.1:5432/ncade_test_ci?sslmode=disable'
         run: |
-          go test -race -count=1 ./...
+          go test -race -p 1 -count=1 ./...
           NCADE_TEST_CATALOG=1 go test -race -count=1 ./internal/emucatalog -run '^TestPostgresCatalogPublication$'
+          NCADE_TEST_CATALOG=1 go test -race -count=1 ./internal/catalogapi -run '^TestPostgresArtifacts$'

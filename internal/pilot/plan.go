@@ -20,6 +20,7 @@ type Selection struct {
 	Partial          bool               `json:"partial"`
 	Manifest         library.Manifest   `json:"manifest"`
 	Emulators        emucatalog.Catalog `json:"emulators"`
+	Onboarding       []Prerequisite     `json:"onboarding"`
 }
 
 func Plan(ctx context.Context, db *sql.DB, genre string, bindings Bindings, availableOnly bool) (Selection, error) {
@@ -28,34 +29,25 @@ func Plan(ctx context.Context, db *sql.DB, genre string, bindings Bindings, avai
 		return p, err
 	}
 	var state string
-	if err := db.QueryRowContext(ctx, `SELECT g.release_id,r.status FROM catalog.pilot_genres g JOIN catalog.suite_releases r ON r.id=g.release_id WHERE g.genre_id=$1`, genre).Scan(&p.ReleaseID, &state); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT s.selected_release_id,r.status FROM catalog.suites s JOIN catalog.suite_releases r ON r.id=s.selected_release_id WHERE s.genre_id=$1`, genre).Scan(&p.ReleaseID, &state); err != nil {
 		return p, fmt.Errorf("pilot genre is not seeded")
 	}
 	if state != "draft" {
 		return p, fmt.Errorf("pilot workflow requires a draft release; use the production signed-manifest workflow for published suites")
 	}
 	p.Manifest.ID = "pilot-" + genre + "-v1"
-	rows, err := db.QueryContext(ctx, `SELECT p.game_key,p.metadata FROM catalog.suite_games s JOIN catalog.pilot_games p ON p.edition_id=s.edition_id WHERE s.release_id=$1 ORDER BY s.display_order`, p.ReleaseID)
+	rows, err := db.QueryContext(ctx, `SELECT e.game_key,g.title,g.release_year,p.slug,e.emulator_slug,g.players_max FROM catalog.suite_games s JOIN catalog.game_editions e ON e.id=s.edition_id JOIN catalog.games g ON g.id=e.game_id JOIN catalog.platforms p ON p.id=e.platform_id JOIN catalog.game_genres gg ON gg.game_id=g.id AND gg.genre_id=$2 WHERE s.release_id=$1 ORDER BY s.display_order`, p.ReleaseID, genre)
 	if err != nil {
 		return p, err
 	}
 	games := []Candidate{}
 	for rows.Next() {
-		var key string
-		var body []byte
-		if err = rows.Scan(&key, &body); err != nil {
+		g := Candidate{Genre: genre}
+		if err = rows.Scan(&g.Key, &g.Title, &g.Year, &g.Platform, &g.Emulator, &g.PlayersMax); err != nil {
 			rows.Close()
 			return p, err
 		}
-		var metadata struct {
-			Candidate Candidate `json:"candidate"`
-		}
-		if err = json.Unmarshal(body, &metadata); err != nil {
-			rows.Close()
-			return p, err
-		}
-		g := metadata.Candidate
-		if key != g.Key || g.Genre != genre {
+		if g.Key == "" || g.Emulator == "" {
 			rows.Close()
 			return p, fmt.Errorf("invalid candidate metadata")
 		}
@@ -73,11 +65,19 @@ func Plan(ctx context.Context, db *sql.DB, genre string, bindings Bindings, avai
 	for _, g := range games {
 		b, ok := bindings.Games[g.Key]
 		if !ok {
-			p.Missing = append(p.Missing, g.Key+": local import required")
+			entry, found, e := downloadEntry(ctx, db, g)
+			if e != nil {
+				return p, e
+			}
+			if found {
+				p.Manifest.Games = append(p.Manifest.Games, entry)
+			} else {
+				p.Missing = append(p.Missing, g.Key+": local import or approved download required")
+			}
 			continue
 		}
 		var registered bool
-		if err = db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM catalog.pilot_sources s JOIN catalog.artifacts a ON a.id=s.artifact_id WHERE s.game_key=$1 AND a.sha256=$2 AND a.download_bytes=$3 AND s.reference_only=$4 AND s.filename=$5)`, g.Key, b.SHA256, b.Bytes, b.Reference, b.Filename).Scan(&registered); err != nil {
+		if err = db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM catalog.game_edition_artifacts s JOIN catalog.game_editions e ON e.id=s.edition_id JOIN catalog.artifacts a ON a.id=s.artifact_id WHERE e.game_key=$1 AND a.sha256=$2 AND a.download_bytes=$3 AND s.reference_only=$4 AND s.filename=$5)`, g.Key, b.SHA256, b.Bytes, b.Reference, b.Filename).Scan(&registered); err != nil {
 			return p, err
 		}
 		if !registered {
@@ -99,10 +99,14 @@ func Plan(ctx context.Context, db *sql.DB, genre string, bindings Bindings, avai
 	if err = p.Emulators.Validate(); err != nil {
 		return p, err
 	}
+	p.Onboarding, err = LoadPrerequisites(ctx, db)
+	if err != nil {
+		return p, err
+	}
 	// Suites retain their explicitly selected emulator releases even when a
 	// newer package is added to the catalog later. Other adapters use the latest
 	// reviewed catalog entry for the user's install-all-emulators test.
-	pinned, err := db.QueryContext(ctx, `SELECT DISTINCT ep.manifest FROM catalog.suite_games sg JOIN catalog.emulator_packages ep ON ep.release_id=sg.emulator_release_id WHERE sg.release_id=$1`, p.ReleaseID)
+	pinned, err := db.QueryContext(ctx, `SELECT DISTINCT ep.manifest FROM catalog.suite_games sg JOIN catalog.emulator_releases ep ON ep.id=sg.emulator_release_id WHERE sg.release_id=$1`, p.ReleaseID)
 	if err != nil {
 		return p, err
 	}
@@ -145,4 +149,15 @@ func Plan(ctx context.Context, db *sql.DB, genre string, bindings Bindings, avai
 		return p, fmt.Errorf("no usable imports for this genre; no installation or removal was started")
 	}
 	return p, nil
+}
+
+// downloadEntry uses only approved, fully described game payloads. Research
+// metadata and save/firmware artifacts can never become a game download.
+func downloadEntry(ctx context.Context, db *sql.DB, game Candidate) (library.Entry, bool, error) {
+	entry := library.Entry{ID: game.Key, Title: game.Title, EmulatorID: game.Emulator, Source: library.Source{Kind: "download", Authorized: true}}
+	err := db.QueryRowContext(ctx, `SELECT a.sha256,a.download_bytes,l.filename,s.source_url,a.license_evidence_url FROM catalog.game_editions e JOIN catalog.game_edition_artifacts l ON l.edition_id=e.id JOIN catalog.artifacts a ON a.id=l.artifact_id JOIN catalog.artifact_sources s ON s.artifact_id=a.id WHERE e.game_key=$1 AND a.kind='game' AND a.permission_status='approved' AND a.license_evidence_url IS NOT NULL AND s.mode='authorized_url' AND l.filename IS NOT NULL AND NOT l.reference_only ORDER BY a.created_at DESC,a.id,s.id LIMIT 1`, game.Key).Scan(&entry.SHA256, &entry.Bytes, &entry.Filename, &entry.Source.URL, &entry.Source.AuthorizationURL)
+	if err == sql.ErrNoRows {
+		return entry, false, nil
+	}
+	return entry, err == nil, err
 }

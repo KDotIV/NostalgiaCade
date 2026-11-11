@@ -63,7 +63,7 @@ func Publish(ctx context.Context, db *sql.DB, c Catalog, subject string) error {
 			return fmt.Errorf("release %s %s already has different content; publish a new version", p.Slug, p.Version)
 		}
 		body, _ := json.Marshal(p)
-		_, err = tx.ExecContext(ctx, `INSERT INTO catalog.emulator_packages(release_id,manifest,verified_at,published_by_subject) VALUES($1,$2,$3,$4) ON CONFLICT(release_id) DO UPDATE SET manifest=excluded.manifest,verified_at=excluded.verified_at,published_by_subject=excluded.published_by_subject`, releaseID, string(body), p.VerifiedAt, subject)
+		_, err = tx.ExecContext(ctx, `UPDATE catalog.emulator_releases SET manifest=$2,verified_at=$3,published_by_subject=$4 WHERE id=$1`, releaseID, string(body), p.VerifiedAt, subject)
 		if err != nil {
 			return err
 		}
@@ -73,7 +73,7 @@ func Publish(ctx context.Context, db *sql.DB, c Catalog, subject string) error {
 
 func Export(ctx context.Context, db *sql.DB) (Catalog, error) {
 	c := Catalog{Version: 1, Packages: []Package{}}
-	rows, err := db.QueryContext(ctx, `SELECT DISTINCT ON(e.slug) p.manifest FROM catalog.emulator_packages p JOIN catalog.emulator_releases r ON r.id=p.release_id JOIN catalog.emulators e ON e.id=r.emulator_id ORDER BY e.slug,p.verified_at DESC,r.upstream_version DESC`)
+	rows, err := db.QueryContext(ctx, `SELECT DISTINCT ON(e.slug) r.manifest FROM catalog.emulator_releases r JOIN catalog.emulators e ON e.id=r.emulator_id WHERE r.manifest IS NOT NULL AND r.os='windows' AND r.architecture='x64' ORDER BY e.slug,r.verified_at DESC NULLS LAST,r.upstream_version DESC`)
 	if err != nil {
 		return c, err
 	}

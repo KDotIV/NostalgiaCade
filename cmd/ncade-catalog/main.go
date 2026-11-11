@@ -69,6 +69,16 @@ func run() error {
 			if err = db.QueryRowContext(ctx, `SELECT COALESCE(max(version),'') FROM public.schema_migrations`).Scan(&version); err != nil {
 				return fmt.Errorf("migration history has an unexpected format")
 			}
+		} else {
+			var cleanup bool
+			if err = db.QueryRowContext(ctx, `SELECT to_regclass('catalog.cleanup_migrations') IS NOT NULL`).Scan(&cleanup); err != nil {
+				return fmt.Errorf("cannot inspect cleanup history")
+			}
+			if cleanup {
+				if err = db.QueryRowContext(ctx, `SELECT COALESCE(max(version),'') FROM catalog.cleanup_migrations`).Scan(&version); err != nil {
+					return fmt.Errorf("cannot read cleanup history")
+				}
+			}
 		}
 		rows, err := db.QueryContext(ctx, `SELECT table_schema||'.'||table_name,column_name,data_type FROM information_schema.columns WHERE table_schema IN ('public','catalog','management') ORDER BY table_schema,table_name,ordinal_position`)
 		if err != nil {

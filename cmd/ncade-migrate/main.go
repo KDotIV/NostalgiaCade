@@ -16,7 +16,30 @@ import (
 func main() {
 	dialect := flag.String("database", "sqlite", "sqlite or postgres")
 	path := flag.String("path", "", "SQLite path (required for sqlite)")
+	cleanup := flag.Bool("cleanup-catalog", false, "Consolidate the existing PostgreSQL catalog, including a manually provisioned foundation")
 	flag.Parse()
+	if *cleanup {
+		if *dialect != "postgres" {
+			fmt.Fprintln(os.Stderr, "--cleanup-catalog requires --database postgres")
+			os.Exit(1)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		db, err := database.OpenPostgres(ctx, os.Getenv("NCADE_POSTGRES_DSN"))
+		if err == nil {
+			defer db.Close()
+			var result database.MigrationResult
+			result, err = database.CleanupCatalog(ctx, db)
+			if err == nil {
+				err = json.NewEncoder(os.Stdout).Encode(result)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Catalog cleanup failed; no changes committed. Check schema, privileges and migration history.")
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(*dialect, *path); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
