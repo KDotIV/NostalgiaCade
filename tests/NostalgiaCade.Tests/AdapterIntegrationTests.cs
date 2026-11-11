@@ -104,8 +104,12 @@ public class AdapterIntegrationTests
                 try
                 {
                     while ((await connection.CallAsync<PlaySession>("session.status", cancellationToken: token)).State == "running") await Task.Delay(50, token);
+                    // Discovery disappears before deferred SQLite cleanup finishes.
+                    // Wait for this isolated test's process, not just its endpoint.
+                    var endpoint = JsonSerializer.Deserialize<CoreEndpoint>(await File.ReadAllTextAsync(Path.Combine(root, "core-endpoint.json"), token), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+                    using var stoppingCore = Process.GetProcessById(endpoint.ProcessId);
                     await connection.CallAsync<JsonElement>("system.shutdown", cancellationToken: token);
-                    while (File.Exists(Path.Combine(root, "core-endpoint.json"))) await Task.Delay(50, token);
+                    await stoppingCore.WaitForExitAsync(token);
                 }
                 catch (Exception) { }
             }

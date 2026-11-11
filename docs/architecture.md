@@ -4,6 +4,12 @@ Status: design for discussion, November 10, 2026. User-confirmed requirements ar
 
 The Avalonia/Go/IPC/database foundation is now implemented. [Development instructions](development.md) describe its actual scope; the remaining architecture here is the target design.
 
+November 11 implementation update: the current remote API is catalog-only. Fleet,
+venue management and reporting tables were removed from PostgreSQL; they remain
+future capabilities in this proposal. See the [current Go structure](go-project-layout.md)
+and [local/Azure host](api-hosting.md). The API is portable, with Azure deployment
+assets prepared but no hosted environment deployed by this work.
+
 ## Confirmed product
 
 - Commercial arcade cabinets and venues, with free play in the MVP.

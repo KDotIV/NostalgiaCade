@@ -1,0 +1,16 @@
+**
+!go.mod
+!go.sum
+!cmd/
+!cmd/ncade-api/
+!cmd/ncade-api/**
+!internal/
+!internal/apihost/
+!internal/apihost/**
+!internal/catalogapi/
+!internal/catalogapi/**
+!internal/emucatalog/
+!internal/emucatalog/**
+!internal/postgres/
+!internal/postgres/**
+!Dockerfile

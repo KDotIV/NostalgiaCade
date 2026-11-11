@@ -11,7 +11,10 @@ import (
 	"strings"
 )
 
-//go:embed migrations/*/*.sql
+// The tracked README keeps this directory embeddable in public checkouts.
+// Release builds require the private SQL bundle (scripts/Private-Migrations.ps1).
+//
+//go:embed migrations
 var migrations embed.FS
 
 type MigrationResult struct {
@@ -44,7 +47,7 @@ func migrateFS(ctx context.Context, db *sql.DB, dialect string, files fs.FS) (re
 	}
 	paths, err := fs.Glob(files, "migrations/"+dialect+"/*.sql")
 	if err != nil || len(paths) == 0 {
-		return result, fmt.Errorf("no migrations for %s", dialect)
+		return result, fmt.Errorf("private migrations for %s are unavailable; import the verified migration bundle before building", dialect)
 	}
 	sort.Strings(paths)
 	conn, err := db.Conn(ctx)

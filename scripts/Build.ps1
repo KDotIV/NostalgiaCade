@@ -2,6 +2,7 @@ param([ValidateSet('Debug','Release')][string]$Configuration = 'Debug')
 . "$PSScriptRoot/Environment.ps1"
 Push-Location $repoRoot
 try {
+    & "$PSScriptRoot/Private-Migrations.ps1" -Action Check
     New-Item -ItemType Directory -Force -Path artifacts/bin | Out-Null
     go build -trimpath -o artifacts/bin/ncade-core.exe ./cmd/ncade-core
     if ($LASTEXITCODE) { throw 'Go core build failed.' }

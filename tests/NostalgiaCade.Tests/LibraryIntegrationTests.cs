@@ -119,8 +119,10 @@ public class LibraryIntegrationTests
                 try
                 {
                     await UntilAsync(async () => (await connection.CallAsync<PlaySession>("session.status", cancellationToken:token)).State != "running");
+                    var endpoint = JsonSerializer.Deserialize<CoreEndpoint>(await File.ReadAllTextAsync(Path.Combine(data,"core-endpoint.json"),token),json)!;
+                    using var stoppingCore = Process.GetProcessById(endpoint.ProcessId);
                     await connection.CallAsync<JsonElement>("system.shutdown", cancellationToken:token);
-                    await Until(() => !File.Exists(Path.Combine(data,"core-endpoint.json")));
+                    await stoppingCore.WaitForExitAsync(token);
                 }
                 catch (Exception) { }
             }

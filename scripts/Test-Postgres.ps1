@@ -1,5 +1,6 @@
 param([string]$PostgresBin = '')
 . "$PSScriptRoot/Environment.ps1"
+& "$PSScriptRoot/Private-Migrations.ps1" -Action Check
 if (-not $PostgresBin) {
     foreach ($pgVersion in @('18','17','16')) {
         $candidateRoot = Join-Path $env:ProgramFiles "PostgreSQL/$pgVersion"

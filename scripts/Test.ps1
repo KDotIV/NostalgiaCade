@@ -2,6 +2,7 @@ param([switch]$Postgres)
 . "$PSScriptRoot/Build.ps1"
 Push-Location $repoRoot
 try {
+    & "$PSScriptRoot/Test-PrivateMigrations.ps1"
     go vet ./...
     if ($LASTEXITCODE) { throw 'Go vet failed.' }
     go test ./...

@@ -2,12 +2,33 @@ name: Foundation checks
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  api-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build deployable API container
+        run: docker build --tag ncade-api:ci .
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.11'
+      - name: Public API checks without migration assets
+        run: |
+          go vet ./internal/apihost ./internal/catalogapi ./internal/postgres
+          go test -race ./internal/apihost ./internal/catalogapi
+
   desktop:
+    # Never make private SQL available to pull-request code. Enable only after
+    # configuring a protected private-build environment and its secret.
+    if: vars.NCADE_PRIVATE_BUILDS_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -21,6 +42,11 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Import verified private migrations
+        shell: pwsh
+        env:
+          NCADE_MIGRATIONS_ZIP_BASE64: ${{ secrets.NCADE_MIGRATIONS_ZIP_BASE64 }}
+        run: ./scripts/Private-Migrations.ps1 -Action Import
       - name: Restore locked packages
         shell: pwsh
         run: |
@@ -32,6 +58,7 @@ jobs:
         run: ./scripts/Test.ps1
 
   postgres:
+    if: vars.NCADE_PRIVATE_BUILDS_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -53,6 +80,14 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26.11'
+          # Compiled packages embed private SQL; never publish them in caches
+          # that pull-request jobs in a public repository could restore.
+          cache: false
+      - name: Import verified private migrations
+        shell: pwsh
+        env:
+          NCADE_MIGRATIONS_ZIP_BASE64: ${{ secrets.NCADE_MIGRATIONS_ZIP_BASE64 }}
+        run: ./scripts/Private-Migrations.ps1 -Action Import
       - name: Database migrations and Go race checks
         env:
           NCADE_TEST_POSTGRES_DSN: 'postgres://ncade_test:ncade_ci_only@127.0.0.1:5432/ncade_test_ci?sslmode=disable'

@@ -7,9 +7,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
-	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/KdotIV/NostalgiaCade/internal/postgres"
 	_ "modernc.org/sqlite"
 )
 
@@ -43,20 +42,5 @@ func OpenSQLite(ctx context.Context, path string) (*sql.DB, error) {
 }
 
 func OpenPostgres(ctx context.Context, dsn string) (*sql.DB, error) {
-	if dsn == "" {
-		return nil, fmt.Errorf("NCADE_POSTGRES_DSN is required")
-	}
-	db, err := sql.Open("pgx", dsn)
-	// Never echo the DSN or a driver's parse/connection error containing it.
-	if err != nil {
-		return nil, fmt.Errorf("invalid PostgreSQL configuration")
-	}
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(2)
-	db.SetConnMaxIdleTime(time.Minute)
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("cannot connect to PostgreSQL; check configuration, TLS and network access")
-	}
-	return db, nil
+	return postgres.Open(ctx, dsn)
 }

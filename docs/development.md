@@ -1,6 +1,6 @@
 # Development guide
 
-Updated November 10, 2026 for local installation/play. This document describes executable behavior; the other architecture documents also include future milestones. See the [operator workflow and examples](operator-cli.md).
+Updated November 11, 2026 for local installation/play and portable API hosting. This document describes executable behavior; the other architecture documents also include future milestones. See the [operator workflow and examples](operator-cli.md).
 
 ## Project map
 
@@ -9,6 +9,8 @@ Updated November 10, 2026 for local installation/play. This document describes e
 | `src/NostalgiaCade.Desktop` | Avalonia/XAML and MVVM presentation; no database or installation policy |
 | `src/NostalgiaCade.Client` | C# IPC framing, version checks, discovery and process lifecycle |
 | `cmd/ncade-core` | Go composition root; lock, database, endpoint and IPC server |
+| `cmd/ncade-api`, `internal/apihost` | Thin HTTP entry point, environment configuration, health probes and shutdown |
+| `internal/catalogapi`, `internal/postgres` | Admin catalog handlers and remote connection pooling |
 | `internal/core` | Cabinet status/catalog queries |
 | `internal/library` | Storage setup, imports/downloads, durable switching and Dolphin sessions |
 | `internal/cli`, `cmd/ncade` | Operator commands and first-run console guide; mutations go through IPC |
@@ -17,7 +19,7 @@ Updated November 10, 2026 for local installation/play. This document describes e
 | `cmd/ncade-migrate` | Explicit migration CLI for development/deployment tooling |
 | `tests/NostalgiaCade.Tests` | C# protocol, real Go-process integration and Avalonia UI tests |
 
-The original Cobra entry point remains separate. Use the scripts below for the new desktop; `go run .` still invokes the earlier CLI scaffold.
+The unused root Cobra scaffold was removed. Each `cmd/<name>` is a separate executable in the same Go module, following the [Go project layout guide](go-project-layout.md). Use `go run ./cmd/ncade-api` for the API or the scripts below for the desktop.
 
 ## Build and run
 
@@ -43,6 +45,8 @@ An abandoned core can remain running after a UI crash or interrupted shutdown; t
 Windows named-pipe access is restricted to the current Windows user and rejects remote clients. This is a local transport boundary, not venue/operator authentication. The prototype assumes a trusted Windows login; it is not a locked-down cabinet. Future privileged device setup must use a separate narrow elevation boundary.
 
 ## Database migrations
+
+A fresh checkout needs the privately supplied, checksum-verified SQL bundle before a full desktop build. See [private migration delivery](private-migrations.md). `Build.ps1` fails early if it is missing. The independent API build and container do not require this bundle. See [local/Azure hosting](api-hosting.md) and [Postman requests](../postman/README.md).
 
 SQL files are embedded in the core and migration CLI. SQLite migrations run before pipe discovery, with WAL, foreign keys and a busy timeout. Tables cover genres, settings, games, artifacts, operations/steps, active-suite state, emulator profiles and play sessions. Migration 003 upgrades the foundation without editing its applied files, retaining existing local rows and permitting multiple entries to share one artifact.
 

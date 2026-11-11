@@ -25,14 +25,21 @@ type artifactStore interface {
 }
 type Config struct{ AdminToken, AdminSubject string }
 
+func (c Config) Validate() error {
+	if len(c.AdminToken) < 32 || strings.TrimSpace(c.AdminToken) != c.AdminToken || strings.ContainsAny(c.AdminToken, " \t\r\n") || strings.TrimSpace(c.AdminSubject) == "" {
+		return fmt.Errorf("NCADE_ADMIN_TOKEN (at least 32 characters) and NCADE_ADMIN_SUBJECT are required")
+	}
+	return nil
+}
+
 // NewHandler maps a server-configured bearer credential to Sengoku-Admin.
 // No body, query, role header, or client-supplied subject can grant this role.
 func NewHandler(db *sql.DB, config Config) (http.Handler, error) {
 	return newHandler(db, Store{DB: db}, config)
 }
 func newHandler(db *sql.DB, store artifactStore, config Config) (http.Handler, error) {
-	if len(config.AdminToken) < 32 || strings.TrimSpace(config.AdminToken) != config.AdminToken || strings.ContainsAny(config.AdminToken, " \t\r\n") || strings.TrimSpace(config.AdminSubject) == "" {
-		return nil, fmt.Errorf("NCADE_ADMIN_TOKEN (at least 32 characters) and NCADE_ADMIN_SUBJECT are required")
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/admin/artifacts", func(w http.ResponseWriter, r *http.Request) {

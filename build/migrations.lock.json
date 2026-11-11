@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "postgres/001_catalog.sql",
+      "sha256": "2b9bf2b09fee5ced0c8972fb06c2d8fe94f8c94eb447ca3d28943387d9c9a8eb"
+    },
+    {
+      "path": "postgres/002_management.sql",
+      "sha256": "2be546164712143b09e070c62a9df14ee4daced3d834b3d6624066a855df2260"
+    },
+    {
+      "path": "postgres/003_genres.sql",
+      "sha256": "c5e8e34612a705d0a9a6ef7a130a901d58f32e66796bf8d7cbd8a1948e572e0b"
+    },
+    {
+      "path": "postgres/004_emulator_packages.sql",
+      "sha256": "2c99dc0586d9985ec8594356127a502e713551cbd30a2c3845e369e4dd351aae"
+    },
+    {
+      "path": "postgres/005_catalog_cleanup.sql",
+      "sha256": "da56a3c8d0d1016712c27cbb53ee98e2b8efaae20419d867e4c79f91b55a0091"
+    },
+    {
+      "path": "sqlite/001_local_state.sql",
+      "sha256": "d7facb9fdfa3ecb4982895bd5309aae146127cfbe73f3bf1c0017eef1afb1442"
+    },
+    {
+      "path": "sqlite/002_genres.sql",
+      "sha256": "41d2cc0b32c9f42bc52d0cefc4b382db35f6748f2a4cc893f52a59f6d9430917"
+    },
+    {
+      "path": "sqlite/003_library_workflows.sql",
+      "sha256": "9ac449ad78e9e46dcc704ebb02119ffa36eb273155f0af6a1898752e93be48d7"
+    },
+    {
+      "path": "sqlite/004_emulator_packages.sql",
+      "sha256": "5fc2fdcb90b99849142da536fd65ede0573f389c11b959b86d9eb5aa51d04b6e"
+    },
+    {
+      "path": "sqlite/005_emulator_adapters.sql",
+      "sha256": "2a845b8ed0a9a9e4a81b31cb4c892ee133591e0412926f29979f46006fd14461"
+    }
+  ]
+}

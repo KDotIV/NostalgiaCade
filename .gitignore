@@ -12,4 +12,6 @@
 *.db-wal
 *.log
 *.user
-internal/database/migrations/postgres/*
+**/migrations/*
+!internal/database/migrations/README.md
+postman/*

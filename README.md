@@ -6,6 +6,11 @@ NostalgiaCade is being designed as a managed arcade library for commercial cabin
 
 ## Run locally
 
+Full desktop builds require an authorized [private migration bundle](docs/private-migrations.md).
+SQL is ignored by Git; existing authorized checkouts keep their local copies.
+The standalone API builds without it. See [API hosting](docs/api-hosting.md),
+[Go project structure](docs/go-project-layout.md), and [Postman JSON/setup](postman/README.md).
+
 On Windows x64, install PowerShell 7, the .NET 10 SDK (10.0.402 or a compatible later patch), and Go with automatic toolchain download enabled. The repository selects Go 1.26.11. The first build downloads dependencies from official registries.
 
 ```powershell
