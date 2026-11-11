@@ -8,6 +8,24 @@ permissions:
   contents: read
 
 jobs:
+  source-scan:
+    # These filesystem checks need no private schema and must run on PRs too.
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.11'
+          cache: false
+      - name: Verify source scanning without private migrations
+        run: go test -count=1 -v ./internal/pilot -run '^Test(CandidatesAndSourceScan|ScanWindowsShortPathRoot|ScanDoesNotFollowLinkedSources)$'
+
   api-container:
     runs-on: ubuntu-latest
     timeout-minutes: 10
