@@ -110,6 +110,10 @@ func Scan(ctx context.Context, roots []string) (Bindings, error) {
 		if err != nil || !info.IsDir() {
 			return result, fmt.Errorf("source root is not a readable directory")
 		}
+		canonicalRoot, err := filepath.EvalSymlinks(absolute)
+		if err != nil {
+			return result, err
+		}
 		err = filepath.WalkDir(absolute, func(path string, d fs.DirEntry, walkErr error) error {
 			if err := ctx.Err(); err != nil {
 				return err
@@ -117,11 +121,21 @@ func Scan(ctx context.Context, roots []string) (Bindings, error) {
 			if walkErr != nil {
 				return walkErr
 			}
+			if d.Type()&os.ModeSymlink != 0 {
+				return nil
+			}
 			resolved, err := filepath.EvalSymlinks(path)
 			if err != nil {
 				return err
 			}
-			if !strings.EqualFold(filepath.Clean(resolved), filepath.Clean(path)) {
+			relative, err := filepath.Rel(absolute, path)
+			if err != nil {
+				return err
+			}
+			// Windows expands 8.3 names when resolving paths. Compare against
+			// the same canonical root, while preserving the caller's source path
+			// in bindings and rejecting links introduced below that root.
+			if !strings.EqualFold(filepath.Clean(resolved), filepath.Join(canonicalRoot, relative)) {
 				if d.IsDir() {
 					return filepath.SkipDir
 				}
